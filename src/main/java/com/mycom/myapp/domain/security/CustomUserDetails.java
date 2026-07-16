@@ -10,6 +10,7 @@ import com.mycom.myapp.domain.user.entity.Role;
 import lombok.Builder;
 import lombok.Getter;
 
+// Spring Security가 인증된 사용자 정보를 보관할 때 사용하는 객체.
 @Builder
 @Getter
 public class CustomUserDetails implements UserDetails {

@@ -1,25 +1,27 @@
 package com.mycom.myapp.domain.reservation.service;
 
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mycom.myapp.domain.program.dto.ProgramResponse;
+import com.mycom.myapp.domain.program.entity.Program;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
+import com.mycom.myapp.domain.reservation.dto.ProgramStatsResponse;
+import com.mycom.myapp.domain.reservation.dto.ReservationRequest;
+import com.mycom.myapp.domain.reservation.dto.ReservationResponse;
+import com.mycom.myapp.domain.reservation.dto.TrainerStatsResponse;
+import com.mycom.myapp.domain.reservation.entity.Reservation;
+import com.mycom.myapp.domain.reservation.entity.Reservation.ReservationStatus;
 import com.mycom.myapp.domain.reservation.repository.ReservationRepository;
+import com.mycom.myapp.domain.user.entity.User;
+import com.mycom.myapp.domain.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
-/**
- * ReservationService - 박서희 담당
- * <p>
- * TODO: 다음 API 구현 (핵심 로직 주의)
- * - createReservation(request, userId): 예약 신청
- *   → 중복 예약 방지 (existsByUserIdAndProgramId)
- *   → 정원 체크 (countByProgramIdAndStatus < capacity)
- *   → 동시성 고려 시 @Lock(PESSIMISTIC_WRITE) 또는 @Version 사용 (가산점)
- * - getMyReservations(userId): 내 예약 목록
- * - cancelReservation(id, userId): 예약 취소 (본인 확인)
- * - getReservationsByProgram(programId): 특정 프로그램 예약자 목록 (TRAINER)
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -27,6 +29,127 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final ProgramRepository programRepository;
+    private final UserRepository userRepository;
 
-    // TODO: 박서희 - 서비스 메서드 구현
+    // 예약 신청 (신청 직후에는 PENDING 상태, 트레이너 승인 필요)
+    @Transactional
+    public ReservationResponse createReservation(ReservationRequest request, Long userId) {
+        Program program = programRepository.findById(request.programId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 프로그램입니다."));
+
+        // 중복 예약 방지 (대기 중이거나 이미 승인된 예약이 있으면 재신청 불가)
+        if (reservationRepository.existsByUserIdAndProgramIdAndStatusIn(
+                userId, program.getId(), List.of(ReservationStatus.PENDING, ReservationStatus.APPROVED))) {
+            throw new IllegalStateException("이미 신청한 프로그램입니다.");
+        }
+
+        // 정원 체크 (승인된 인원 기준)
+        long approvedCount = reservationRepository.countByProgramIdAndStatus(
+                program.getId(), ReservationStatus.APPROVED);
+        if (approvedCount >= program.getCapacity()) {
+            throw new IllegalStateException("정원이 마감된 프로그램입니다.");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        Reservation reservation = Reservation.builder()
+                .user(user)
+                .program(program)
+                .build();
+
+        return ReservationResponse.from(reservationRepository.save(reservation));
+    }
+
+    // 내 예약 목록
+    public List<ReservationResponse> getMyReservations(Long userId) {
+        return reservationRepository.findByUserId(userId).stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
+
+    // 예약 취소 (본인 확인, 대기/승인 상태만 취소 가능)
+    @Transactional
+    public void cancelReservation(Long reservationId, Long userId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+
+        if (!reservation.getUser().getId().equals(userId)) {
+            throw new IllegalStateException("본인의 예약만 취소할 수 있습니다.");
+        }
+        if (reservation.getStatus() != ReservationStatus.PENDING
+                && reservation.getStatus() != ReservationStatus.APPROVED) {
+            throw new IllegalStateException("취소할 수 없는 상태의 예약입니다.");
+        }
+        reservation.cancel();
+    }
+
+    // 예약 승인 (TRAINER, 본인 프로그램만)
+    @Transactional
+    public ReservationResponse approveReservation(Long reservationId, Long trainerId) {
+        Reservation reservation = getPendingReservationOfTrainer(reservationId, trainerId);
+
+        // 정원 체크 (승인 시점에 다시 확인)
+        long approvedCount = reservationRepository.countByProgramIdAndStatus(
+                reservation.getProgram().getId(), ReservationStatus.APPROVED);
+        if (approvedCount >= reservation.getProgram().getCapacity()) {
+            throw new IllegalStateException("정원이 마감되어 승인할 수 없습니다.");
+        }
+
+        reservation.approve();
+        return ReservationResponse.from(reservation);
+    }
+
+    // 예약 거절 (TRAINER, 본인 프로그램만)
+    @Transactional
+    public ReservationResponse rejectReservation(Long reservationId, Long trainerId) {
+        Reservation reservation = getPendingReservationOfTrainer(reservationId, trainerId);
+        reservation.reject();
+        return ReservationResponse.from(reservation);
+    }
+
+    // 공통 검증: 예약 존재 + 본인(트레이너) 프로그램 + PENDING 상태
+    private Reservation getPendingReservationOfTrainer(Long reservationId, Long trainerId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+
+        if (!reservation.getProgram().getTrainer().getId().equals(trainerId)) {
+            throw new IllegalStateException("본인 프로그램의 예약만 처리할 수 있습니다.");
+        }
+        if (!reservation.isPending()) {
+            throw new IllegalStateException("대기 중인 예약만 처리할 수 있습니다.");
+        }
+        return reservation;
+    }
+
+    // 특정 프로그램의 예약자 목록 (TRAINER)
+    public List<ReservationResponse> getReservationsByProgram(Long programId) {
+        return reservationRepository.findByProgramId(programId).stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
+
+    // ===== 통계 =====
+
+    // 예약이 한 건도 없는 프로그램 목록 (NOT EXISTS 서브쿼리)
+    public List<ProgramResponse> getProgramsWithoutReservation() {
+        return reservationRepository.findProgramsWithoutReservation().stream()
+                .map(ProgramResponse::from)
+                .toList();
+    }
+
+    // 트레이너별 이번 달 승인된 예약 건수 (JOIN + GROUP BY)
+    public List<TrainerStatsResponse> getMonthlyApprovedCountByTrainer() {
+        LocalDateTime start = YearMonth.now().atDay(1).atStartOfDay();          // 이번 달 1일 00:00
+        LocalDateTime end = start.plusMonths(1);                                // 다음 달 1일 00:00
+        return reservationRepository.countApprovedByTrainer(
+                ReservationStatus.APPROVED, start, end);
+    }
+
+    // 승인 건수 기준 인기 프로그램 TOP N (JOIN + GROUP BY)
+    public List<ProgramStatsResponse> getPopularPrograms(int limit) {
+        return reservationRepository.findPopularPrograms(ReservationStatus.APPROVED).stream()
+                .limit(limit)
+                .toList();
+    }
 }

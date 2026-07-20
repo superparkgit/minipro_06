@@ -42,16 +42,19 @@ public class RefreshToken {
 	
 	private String token;
 	
-	private LocalDateTime expiryDate;
+	/**
+	 * Refresh Token 만료 시각.
+	 */
+	private LocalDateTime expiresAt;
 	
 	@CreationTimestamp
 	private LocalDateTime createdAt;
 
 	@Builder
-	public RefreshToken(User user, String token, LocalDateTime expiryDate) {
+	public RefreshToken(User user, String token, LocalDateTime expiresAt) {
 		this.user = user;
 		this.token = token;
-		this.expiryDate = expiryDate;
+		this.expiresAt = expiresAt;
 	}
 	
 	

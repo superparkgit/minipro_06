@@ -2,6 +2,7 @@ package com.mycom.myapp.domain.auth.service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Set;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.mycom.myapp.domain.auth.dto.LoginRequest;
 import com.mycom.myapp.domain.auth.dto.SignupRequest;
+import com.mycom.myapp.domain.auth.dto.SignupResponse;
 import com.mycom.myapp.domain.auth.dto.TokenResponse;
 import com.mycom.myapp.domain.auth.entity.RefreshToken;
 import com.mycom.myapp.domain.auth.exception.DuplicateEmailException;
@@ -19,7 +21,9 @@ import com.mycom.myapp.domain.security.CustomUserDetails;
 import com.mycom.myapp.domain.security.jwt.JwtUtil;
 import com.mycom.myapp.domain.user.entity.Role;
 import com.mycom.myapp.domain.user.entity.User;
+import com.mycom.myapp.domain.user.entity.UserRole;
 import com.mycom.myapp.domain.user.repository.UserRepository;
+import com.mycom.myapp.domain.user.repository.UserRoleRepository;
 
 import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
@@ -36,6 +40,8 @@ public class AuthServiceImpl implements AuthService{
 	private final AuthenticationManager authenticationManager;
 	private final JwtUtil jwtUtil;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final UserRoleRepository userRoleRepository;
+	
 	
 	/**
 	 * 이메일 중복 확인
@@ -44,21 +50,34 @@ public class AuthServiceImpl implements AuthService{
 	 */
 	@Override
 	@Transactional
-	public void signup(SignupRequest request) {
+	public SignupResponse signup(SignupRequest request) {
 		if(userRepository.existsByEmail(request.email())) {
 //			throw new IllegalArgumentException("이미 사용 중인 이메일 입니다.");
 			// 중복 이메일과 다른 잘못된 요청 구분
 			throw new DuplicateEmailException();
 		}
 		
+		UserRole defaultRole = userRoleRepository
+				.findByRoleName(Role.ROLE_USER)
+				.orElseThrow(()-> 
+					new IllegalStateException("ROLE_USER이 존재하지 않습니다.")
+						);
+									
+		
 		User user = User.builder()
 						.email(request.email())
 						.password(passwordEncoder.encode(request.password()))
 						.name(request.name())
-						.role(Role.USER)
+						.userRoles(Set.of(defaultRole))
 						.build();
 		
-		userRepository.save(user);
+		User savedUser = userRepository.save(user);
+		
+		return new SignupResponse(
+				savedUser.getId(),
+				savedUser.getEmail(),
+				savedUser.getName()
+		);
 	}
 	
 	/**
@@ -91,7 +110,7 @@ public class AuthServiceImpl implements AuthService{
         
         // JWT 내부 exp 만료 시간 java.util.Date 타입.
         // LocalDateTime 으로 변환
-        LocalDateTime expiryDate = LocalDateTime.ofInstant(
+        LocalDateTime expiresAt = LocalDateTime.ofInstant(
         		refreshTokenClaims.getExpiration().toInstant(), 
         		ZoneId.systemDefault());
         
@@ -100,7 +119,7 @@ public class AuthServiceImpl implements AuthService{
         RefreshToken savedRefreshToken = RefreshToken.builder()
         											.user(user)
         											.token(refreshToken)
-        											.expiryDate(expiryDate)
+        											.expiresAt(expiresAt)
         											.build();
         refreshTokenRepository.save(savedRefreshToken);
         

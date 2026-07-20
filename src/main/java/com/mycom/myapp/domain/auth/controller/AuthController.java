@@ -9,8 +9,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mycom.myapp.domain.auth.dto.LoginRequest;
 import com.mycom.myapp.domain.auth.dto.SignupRequest;
+import com.mycom.myapp.domain.auth.dto.SignupResponse;
 import com.mycom.myapp.domain.auth.dto.TokenResponse;
 import com.mycom.myapp.domain.auth.service.AuthService;
+
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -23,9 +25,9 @@ public class AuthController {
 	 * 회원가입
 	 */
 	@PostMapping("/signup")
-	public ResponseEntity<Void> signup(@RequestBody SignupRequest request){
-		authService.signup(request);
-		return ResponseEntity.status(HttpStatus.CREATED).build();
+	public ResponseEntity<SignupResponse> signup(@RequestBody SignupRequest request){
+		SignupResponse signupResponse = authService.signup(request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(signupResponse);
 	}
 	
 	/**
@@ -33,7 +35,7 @@ public class AuthController {
 	 */
 	@PostMapping("/login")
 	public ResponseEntity<TokenResponse> login(@RequestBody LoginRequest request){
-		TokenResponse tokenresponse = authService.login(request);
-		return ResponseEntity.ok(tokenresponse);
+		TokenResponse tokenResponse = authService.login(request);
+		return ResponseEntity.ok(tokenResponse);
 	}
 }

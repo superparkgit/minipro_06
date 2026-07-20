@@ -2,6 +2,7 @@ package com.mycom.myapp.domain.auth.service;
 
 import com.mycom.myapp.domain.auth.dto.LoginRequest;
 import com.mycom.myapp.domain.auth.dto.SignupRequest;
+import com.mycom.myapp.domain.auth.dto.SignupResponse;
 import com.mycom.myapp.domain.auth.dto.TokenResponse;
 
 /**
@@ -15,7 +16,7 @@ import com.mycom.myapp.domain.auth.dto.TokenResponse;
  */
 public interface AuthService {
 
-	void signup(SignupRequest request);
+	SignupResponse signup(SignupRequest request);
 
 	TokenResponse login(LoginRequest request);
 }

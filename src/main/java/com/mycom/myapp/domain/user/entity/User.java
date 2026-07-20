@@ -1,16 +1,19 @@
 package com.mycom.myapp.domain.user.entity;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -33,20 +36,26 @@ public class User {
 
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    private Role role;
-
+    /**
+     * User가 관계의 주인.
+     * user_user_roles 연결 테이블도 함께 관리.
+     */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+    		name = "user_user_roles",
+    		joinColumns = @JoinColumn(name = "user_id"),
+    		inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<UserRole> userRoles = new HashSet<>();
+    
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
-
     @Builder
-    private User(String email, String password, String name, Role role) {
+    private User(String email, String password, String name, Set<UserRole> userRoles) {
         this.email = email;
         this.password = password;
         this.name = name;
-        this.role = role == null ? Role.USER : role;
+        this.userRoles = userRoles == null ? new HashSet<>() : new HashSet<>(userRoles);
     }
 }

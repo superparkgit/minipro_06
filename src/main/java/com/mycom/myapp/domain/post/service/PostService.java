@@ -1,5 +1,7 @@
 package com.mycom.myapp.domain.post.service;
 
+import com.mycom.myapp.domain.global.exception.AccessDeniedException;
+import com.mycom.myapp.domain.global.exception.ResourceNotFoundException;
 import com.mycom.myapp.domain.post.dto.PostRequestDto;
 import com.mycom.myapp.domain.post.dto.PostResponseDto;
 import com.mycom.myapp.domain.post.entity.Category;
@@ -12,8 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +45,7 @@ public class PostService {
     @Transactional
     public PostResponseDto createPost(Long writerId, PostRequestDto requestDto) {
         User writer = userRepository.findById(writerId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. id=" + writerId));
+                .orElseThrow(() -> new ResourceNotFoundException("사용자", writerId));
 
         Post post = Post.builder()
                 .writer(writer)
@@ -60,7 +60,7 @@ public class PostService {
 
     public PostResponseDto getPostById(Long postId) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다. id=" + postId));
+                .orElseThrow(() -> new ResourceNotFoundException("게시글", postId));
         return PostResponseDto.from(post);
     }
 
@@ -72,10 +72,10 @@ public class PostService {
     @Transactional
     public PostResponseDto updatePost(Long postId, Long writerId, PostRequestDto requestDto) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다. id=" + postId));
+                .orElseThrow(() -> new ResourceNotFoundException("게시글", postId));
 
         if (!post.getWriter().getId().equals(writerId)) {
-            throw new IllegalArgumentException("게시글 수정 권한이 없습니다.");
+            throw new AccessDeniedException("게시글 수정 권한이 없습니다.");
         }
 
         post.update(requestDto.getTitle(), requestDto.getContent(), requestDto.getCategory());
@@ -85,10 +85,10 @@ public class PostService {
     @Transactional
     public void deletePost(Long postId, Long writerId) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다. id=" + postId));
+                .orElseThrow(() -> new ResourceNotFoundException("게시글", postId));
 
         if (!post.getWriter().getId().equals(writerId)) {
-            throw new IllegalArgumentException("게시글 삭제 권한이 없습니다.");
+            throw new AccessDeniedException("게시글 삭제 권한이 없습니다.");
         }
 
         postRepository.delete(post);

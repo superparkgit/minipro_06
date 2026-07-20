@@ -4,6 +4,8 @@ import com.mycom.myapp.domain.comment.dto.CommentRequestDto;
 import com.mycom.myapp.domain.comment.dto.CommentResponseDto;
 import com.mycom.myapp.domain.comment.entity.Comment;
 import com.mycom.myapp.domain.comment.repository.CommentRepository;
+import com.mycom.myapp.domain.global.exception.AccessDeniedException;
+import com.mycom.myapp.domain.global.exception.ResourceNotFoundException;
 import com.mycom.myapp.domain.post.entity.Post;
 import com.mycom.myapp.domain.post.repository.PostRepository;
 import com.mycom.myapp.domain.user.entity.User;
@@ -26,10 +28,10 @@ public class CommentService {
     @Transactional
     public CommentResponseDto createComment(Long postId, Long writerId, CommentRequestDto requestDto) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다. id=" + postId));
+                .orElseThrow(() -> new ResourceNotFoundException("게시글", postId));
 
         User writer = userRepository.findById(writerId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. id=" + writerId));
+                .orElseThrow(() -> new ResourceNotFoundException("사용자", writerId));
 
         Comment comment = Comment.builder()
                 .post(post)
@@ -50,10 +52,10 @@ public class CommentService {
     @Transactional
     public CommentResponseDto updateComment(Long commentId, Long writerId, CommentRequestDto requestDto) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다. id=" + commentId));
+                .orElseThrow(() -> new ResourceNotFoundException("댓글", commentId));
 
         if (!comment.getWriter().getId().equals(writerId)) {
-            throw new IllegalArgumentException("댓글 수정 권한이 없습니다.");
+            throw new AccessDeniedException("댓글 수정 권한이 없습니다.");
         }
 
         comment.update(requestDto.getContent());
@@ -63,10 +65,10 @@ public class CommentService {
     @Transactional
     public void deleteComment(Long commentId, Long writerId) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다. id=" + commentId));
+                .orElseThrow(() -> new ResourceNotFoundException("댓글", commentId));
 
         if (!comment.getWriter().getId().equals(writerId)) {
-            throw new IllegalArgumentException("댓글 삭제 권한이 없습니다.");
+            throw new AccessDeniedException("댓글 삭제 권한이 없습니다.");
         }
 
         commentRepository.delete(comment);

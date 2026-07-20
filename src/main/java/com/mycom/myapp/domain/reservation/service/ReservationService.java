@@ -9,16 +9,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mycom.myapp.domain.program.dto.ProgramResponse;
 import com.mycom.myapp.domain.program.entity.Program;
+import com.mycom.myapp.domain.program.entity.Program.ProgramStatus;
+import com.mycom.myapp.domain.program.entity.ProgramTrainer.AssignmentRole;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
+import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
+import com.mycom.myapp.domain.reservation.dto.AttendanceRequest;
 import com.mycom.myapp.domain.reservation.dto.ProgramStatsResponse;
 import com.mycom.myapp.domain.reservation.dto.ReservationRequest;
 import com.mycom.myapp.domain.reservation.dto.ReservationResponse;
 import com.mycom.myapp.domain.reservation.dto.TrainerStatsResponse;
 import com.mycom.myapp.domain.reservation.entity.Reservation;
 import com.mycom.myapp.domain.reservation.entity.Reservation.ReservationStatus;
+import com.mycom.myapp.domain.reservation.entity.Reservation.AttendanceStatus;
 import com.mycom.myapp.domain.reservation.repository.ReservationRepository;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
+import com.mycom.myapp.global.exception.CustomException;
+import com.mycom.myapp.global.exception.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,29 +36,34 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final ProgramRepository programRepository;
+    private final ProgramTrainerRepository programTrainerRepository;
     private final UserRepository userRepository;
 
     // 예약 신청 (신청 직후에는 PENDING 상태, 트레이너 승인 필요)
     @Transactional
     public ReservationResponse createReservation(ReservationRequest request, Long userId) {
         Program program = programRepository.findById(request.programId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 프로그램입니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.CLASS_NOT_FOUND));
+
+        if (program.getStatus() != ProgramStatus.OPEN) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
 
         // 중복 예약 방지 (대기 중이거나 이미 승인된 예약이 있으면 재신청 불가)
         if (reservationRepository.existsByUserIdAndProgramIdAndStatusIn(
                 userId, program.getId(), List.of(ReservationStatus.PENDING, ReservationStatus.APPROVED))) {
-            throw new IllegalStateException("이미 신청한 프로그램입니다.");
+            throw new CustomException(ErrorCode.DUPLICATE_RESERVATION);
         }
 
         // 정원 체크 (승인된 인원 기준)
         long approvedCount = reservationRepository.countByProgramIdAndStatus(
                 program.getId(), ReservationStatus.APPROVED);
         if (approvedCount >= program.getCapacity()) {
-            throw new IllegalStateException("정원이 마감된 프로그램입니다.");
+            throw new CustomException(ErrorCode.CAPACITY_EXCEEDED);
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         Reservation reservation = Reservation.builder()
                 .user(user)
@@ -72,14 +84,14 @@ public class ReservationService {
     @Transactional
     public void cancelReservation(Long reservationId, Long userId) {
         Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_NOT_FOUND));
 
         if (!reservation.getUser().getId().equals(userId)) {
-            throw new IllegalStateException("본인의 예약만 취소할 수 있습니다.");
+            throw new CustomException(ErrorCode.RESERVATION_ACCESS_DENIED);
         }
         if (reservation.getStatus() != ReservationStatus.PENDING
                 && reservation.getStatus() != ReservationStatus.APPROVED) {
-            throw new IllegalStateException("취소할 수 없는 상태의 예약입니다.");
+            throw new CustomException(ErrorCode.ALREADY_CANCELED);
         }
         reservation.cancel();
     }
@@ -93,7 +105,7 @@ public class ReservationService {
         long approvedCount = reservationRepository.countByProgramIdAndStatus(
                 reservation.getProgram().getId(), ReservationStatus.APPROVED);
         if (approvedCount >= reservation.getProgram().getCapacity()) {
-            throw new IllegalStateException("정원이 마감되어 승인할 수 없습니다.");
+            throw new CustomException(ErrorCode.CAPACITY_EXCEEDED);
         }
 
         reservation.approve();
@@ -111,22 +123,95 @@ public class ReservationService {
     // 공통 검증: 예약 존재 + 본인(트레이너) 프로그램 + PENDING 상태
     private Reservation getPendingReservationOfTrainer(Long reservationId, Long trainerId) {
         Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_NOT_FOUND));
 
-        if (!reservation.getProgram().getTrainer().getId().equals(trainerId)) {
-            throw new IllegalStateException("본인 프로그램의 예약만 처리할 수 있습니다.");
+        if (!programTrainerRepository.existsByProgramIdAndTrainerId(
+                reservation.getProgram().getId(), trainerId)) {
+            throw new CustomException(ErrorCode.RESERVATION_ACCESS_DENIED);
+        }
+        // 폐강·종료된 수업의 대기 예약은 승인/거절 대상이 아니다
+        ProgramStatus programStatus = reservation.getProgram().getStatus();
+        if (programStatus == ProgramStatus.CANCELED || programStatus == ProgramStatus.COMPLETED) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
         }
         if (!reservation.isPending()) {
-            throw new IllegalStateException("대기 중인 예약만 처리할 수 있습니다.");
+            throw new CustomException(ErrorCode.INVALID_INPUT);
         }
         return reservation;
     }
 
-    // 특정 프로그램의 예약자 목록 (TRAINER)
-    public List<ReservationResponse> getReservationsByProgram(Long programId) {
+    // 특정 프로그램의 예약자 목록 (TRAINER, 본인 프로그램만)
+    // 예약자 개인정보가 포함되므로 담당 트레이너 본인인지 반드시 확인
+    public List<ReservationResponse> getReservationsByProgram(Long programId, Long trainerId) {
+        Program program = programRepository.findById(programId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CLASS_NOT_FOUND));
+
+        if (!programTrainerRepository.existsByProgramIdAndTrainerId(programId, trainerId)) {
+            throw new CustomException(ErrorCode.CLASS_ACCESS_DENIED);
+        }
+
         return reservationRepository.findByProgramId(programId).stream()
                 .map(ReservationResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public ReservationResponse markAttendance(
+            Long reservationId, Long trainerId, AttendanceRequest request) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_NOT_FOUND));
+
+        if (!programTrainerRepository.existsByProgramIdAndTrainerId(
+                reservation.getProgram().getId(), trainerId)) {
+            throw new CustomException(ErrorCode.RESERVATION_ACCESS_DENIED);
+        }
+        if (reservation.getProgram().getStatus() != ProgramStatus.COMPLETED
+                || reservation.getStatus() != ReservationStatus.APPROVED) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        if (request.attendanceStatus() == AttendanceStatus.NOT_CHECKED) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        reservation.markAttendance(request.attendanceStatus());
+        return ReservationResponse.from(reservation);
+    }
+
+    // ===== 리뷰 연동 (용재님 ReviewService에서 호출) =====
+
+    /**
+     * 리뷰 작성 자격을 검증하고, 리뷰 대상이 될 MAIN 트레이너 id를 반환한다.
+     *
+     * 검증 항목
+     *  1. 예약 존재
+     *  2. 예약자 본인
+     *  3. 예약 상태 APPROVED
+     *  4. 출석 상태 ATTENDED
+     *  5. 수업 상태 COMPLETED
+     *
+     * @return 해당 프로그램의 MAIN 트레이너 id
+     */
+    public Long verifyReviewEligible(Long reservationId, Long userId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_NOT_FOUND));
+
+        if (!reservation.getUser().getId().equals(userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+        if (reservation.getStatus() != ReservationStatus.APPROVED) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        if (reservation.getAttendanceStatus() != AttendanceStatus.ATTENDED) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        if (reservation.getProgram().getStatus() != ProgramStatus.COMPLETED) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        return programTrainerRepository
+                .findByProgramIdAndAssignmentRole(reservation.getProgram().getId(), AssignmentRole.MAIN)
+                .orElseThrow(() -> new CustomException(ErrorCode.CLASS_NOT_FOUND))
+                .getTrainer().getId();
     }
 
     // ===== 통계 =====
@@ -143,7 +228,7 @@ public class ReservationService {
         LocalDateTime start = YearMonth.now().atDay(1).atStartOfDay();          // 이번 달 1일 00:00
         LocalDateTime end = start.plusMonths(1);                                // 다음 달 1일 00:00
         return reservationRepository.countApprovedByTrainer(
-                ReservationStatus.APPROVED, start, end);
+                ReservationStatus.APPROVED, AssignmentRole.MAIN, start, end);
     }
 
     // 승인 건수 기준 인기 프로그램 TOP N (JOIN + GROUP BY)

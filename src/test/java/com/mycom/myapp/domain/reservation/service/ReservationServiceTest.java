@@ -9,6 +9,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -21,13 +22,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.mycom.myapp.domain.program.entity.Program;
 import com.mycom.myapp.domain.program.entity.Program.ProgramType;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
+import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
 import com.mycom.myapp.domain.reservation.dto.ReservationRequest;
 import com.mycom.myapp.domain.reservation.dto.ReservationResponse;
+import com.mycom.myapp.domain.reservation.dto.AttendanceRequest;
 import com.mycom.myapp.domain.reservation.entity.Reservation;
+import com.mycom.myapp.domain.reservation.entity.Reservation.AttendanceStatus;
 import com.mycom.myapp.domain.reservation.entity.Reservation.ReservationStatus;
 import com.mycom.myapp.domain.reservation.repository.ReservationRepository;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
+import com.mycom.myapp.global.exception.CustomException;
+import com.mycom.myapp.global.exception.ErrorCode;
 
 /**
  * ReservationService 단위 테스트 (Mockito)
@@ -41,6 +47,9 @@ class ReservationServiceTest {
 
     @Mock
     private ProgramRepository programRepository;
+
+    @Mock
+    private ProgramTrainerRepository programTrainerRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -57,7 +66,7 @@ class ReservationServiceTest {
     private Program program(Long id, User trainer, int capacity) {
         return Program.builder()
                 .id(id).title("아침 PT").type(ProgramType.PT)
-                .trainer(trainer).capacity(capacity)
+                .capacity(capacity)
                 .startAt(LocalDateTime.now().plusDays(1))
                 .endAt(LocalDateTime.now().plusDays(1).plusHours(1))
                 .build();
@@ -100,8 +109,8 @@ class ReservationServiceTest {
 
         assertThatThrownBy(() ->
                 reservationService.createReservation(new ReservationRequest(999L), 1L))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("존재하지 않는 프로그램");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_NOT_FOUND);
     }
 
     @Test
@@ -114,8 +123,8 @@ class ReservationServiceTest {
 
         assertThatThrownBy(() ->
                 reservationService.createReservation(new ReservationRequest(100L), 1L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("이미 신청한 프로그램");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_RESERVATION);
     }
 
     @Test
@@ -130,8 +139,8 @@ class ReservationServiceTest {
 
         assertThatThrownBy(() ->
                 reservationService.createReservation(new ReservationRequest(100L), 1L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("정원이 마감");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CAPACITY_EXCEEDED);
     }
 
     // ===== 예약 취소 =====
@@ -155,8 +164,8 @@ class ReservationServiceTest {
         given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
 
         assertThatThrownBy(() -> reservationService.cancelReservation(500L, 2L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("본인의 예약만");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.RESERVATION_ACCESS_DENIED);
     }
 
     @Test
@@ -167,8 +176,8 @@ class ReservationServiceTest {
         given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
 
         assertThatThrownBy(() -> reservationService.cancelReservation(500L, 1L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("취소할 수 없는 상태");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_CANCELED);
     }
 
     // ===== 예약 승인 =====
@@ -183,6 +192,7 @@ class ReservationServiceTest {
         given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
         given(reservationRepository.countByProgramIdAndStatus(100L, ReservationStatus.APPROVED))
                 .willReturn(0L);
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
 
         ReservationResponse response = reservationService.approveReservation(500L, 10L);
 
@@ -195,10 +205,11 @@ class ReservationServiceTest {
         Program program = program(100L, user(10L, "트레이너"), 5);
         Reservation reservation = reservation(500L, user(1L, "회원"), program);
         given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 99L)).willReturn(false);
 
         assertThatThrownBy(() -> reservationService.approveReservation(500L, 99L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("본인 프로그램");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.RESERVATION_ACCESS_DENIED);
     }
 
     @Test
@@ -208,10 +219,11 @@ class ReservationServiceTest {
         Reservation reservation = reservation(500L, user(1L, "회원"), program);
         reservation.approve(); // 이미 승인됨
         given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
 
         assertThatThrownBy(() -> reservationService.approveReservation(500L, 10L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("대기 중인 예약만");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
     }
 
     @Test
@@ -220,12 +232,58 @@ class ReservationServiceTest {
         Program program = program(100L, user(10L, "트레이너"), 2);
         Reservation reservation = reservation(500L, user(1L, "회원"), program);
         given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
         given(reservationRepository.countByProgramIdAndStatus(100L, ReservationStatus.APPROVED))
                 .willReturn(2L); // 정원 2명 다 참
 
         assertThatThrownBy(() -> reservationService.approveReservation(500L, 10L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("정원이 마감");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CAPACITY_EXCEEDED);
+    }
+
+    // ===== 예약자 목록 조회 (권한) =====
+
+    @Test
+    @DisplayName("예약자 목록 조회 성공 - 담당 트레이너 본인")
+    void getReservationsByProgram_success() {
+        User trainer = user(10L, "트레이너");
+        Program program = program(100L, trainer, 5);
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+        given(reservationRepository.findByProgramId(100L))
+                .willReturn(List.of(reservation(500L, user(1L, "회원"), program)));
+
+        assertThat(reservationService.getReservationsByProgram(100L, 10L)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("예약자 목록 조회 실패 - 담당 트레이너가 아니면 개인정보 접근 차단")
+    void getReservationsByProgram_notOwner() {
+        Program program = program(100L, user(10L, "트레이너"), 5);
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 99L)).willReturn(false);
+
+        assertThatThrownBy(() -> reservationService.getReservationsByProgram(100L, 99L))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_ACCESS_DENIED);
+    }
+
+    // ===== 출석 처리 =====
+
+    @Test
+    @DisplayName("출석 처리 성공 - 종료된 수업의 승인 예약을 담당 트레이너가 처리")
+    void markAttendance_success() {
+        Program program = program(100L, user(10L, "트레이너"), 1);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        ReservationResponse response = reservationService.markAttendance(
+                500L, 10L, new AttendanceRequest(AttendanceStatus.ATTENDED));
+
+        assertThat(response.attendanceStatus()).isEqualTo(AttendanceStatus.ATTENDED);
     }
 
     // ===== 예약 거절 =====
@@ -236,6 +294,7 @@ class ReservationServiceTest {
         Program program = program(100L, user(10L, "트레이너"), 5);
         Reservation reservation = reservation(500L, user(1L, "회원"), program);
         given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
 
         ReservationResponse response = reservationService.rejectReservation(500L, 10L);
 

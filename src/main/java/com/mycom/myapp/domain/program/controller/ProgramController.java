@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mycom.myapp.domain.program.dto.ProgramRequest;
 import com.mycom.myapp.domain.program.dto.ProgramResponse;
+import com.mycom.myapp.domain.program.dto.AddTrainerRequest;
 import com.mycom.myapp.domain.program.entity.Program.ProgramType;
 import com.mycom.myapp.domain.program.service.ProgramService;
-import com.mycom.myapp.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -53,8 +53,8 @@ public class ProgramController {
     @PostMapping
     public ResponseEntity<ProgramResponse> createProgram(
             @Valid @RequestBody ProgramRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        ProgramResponse response = programService.createProgram(request, userDetails.getUserId());
+            @AuthenticationPrincipal Long userId) {
+        ProgramResponse response = programService.createProgram(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -64,8 +64,8 @@ public class ProgramController {
     public ResponseEntity<ProgramResponse> updateProgram(
             @PathVariable Long id,
             @Valid @RequestBody ProgramRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(programService.updateProgram(id, request, userDetails.getUserId()));
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(programService.updateProgram(id, request, userId));
     }
 
     // 프로그램 삭제 (TRAINER, 본인)
@@ -73,8 +73,46 @@ public class ProgramController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProgram(
             @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        programService.deleteProgram(id, userDetails.getUserId());
+            @AuthenticationPrincipal Long userId) {
+        programService.deleteProgram(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasRole('TRAINER')")
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<Void> cancelProgram(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId) {
+        programService.cancelProgram(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 수업 완료 처리 (MAIN) - COMPLETED가 되어야 출석 처리가 가능하다
+    @PreAuthorize("hasRole('TRAINER')")
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<Void> completeProgram(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId) {
+        programService.completeProgram(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasRole('TRAINER')")
+    @PostMapping("/{id}/trainers")
+    public ResponseEntity<ProgramResponse> addAssistant(
+            @PathVariable Long id,
+            @Valid @RequestBody AddTrainerRequest request,
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(programService.addAssistant(id, request.trainerId(), userId));
+    }
+
+    @PreAuthorize("hasRole('TRAINER')")
+    @DeleteMapping("/{id}/trainers/{trainerId}")
+    public ResponseEntity<Void> removeAssistant(
+            @PathVariable Long id,
+            @PathVariable Long trainerId,
+            @AuthenticationPrincipal Long userId) {
+        programService.removeAssistant(id, trainerId, userId);
         return ResponseEntity.noContent().build();
     }
 }

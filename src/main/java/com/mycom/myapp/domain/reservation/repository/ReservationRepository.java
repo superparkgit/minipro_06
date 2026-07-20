@@ -13,6 +13,7 @@ import com.mycom.myapp.domain.reservation.dto.ProgramStatsResponse;
 import com.mycom.myapp.domain.reservation.dto.TrainerStatsResponse;
 import com.mycom.myapp.domain.reservation.entity.Reservation;
 import com.mycom.myapp.domain.reservation.entity.Reservation.ReservationStatus;
+import com.mycom.myapp.domain.program.entity.ProgramTrainer.AssignmentRole;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
@@ -52,8 +53,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                 t.id, t.name, COUNT(r.id))
             FROM Reservation r
             JOIN r.program p
-            JOIN p.trainer t
+            JOIN p.trainerAssignments pt
+            JOIN pt.trainer t
             WHERE r.status = :status
+              AND pt.assignmentRole = :assignmentRole
               AND r.createdAt >= :start
               AND r.createdAt < :end
             GROUP BY t.id, t.name
@@ -61,6 +64,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             """)
     List<TrainerStatsResponse> countApprovedByTrainer(
             @Param("status") ReservationStatus status,
+            @Param("assignmentRole") AssignmentRole assignmentRole,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 

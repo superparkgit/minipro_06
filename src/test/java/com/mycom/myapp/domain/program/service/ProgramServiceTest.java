@@ -22,8 +22,11 @@ import com.mycom.myapp.domain.program.dto.ProgramResponse;
 import com.mycom.myapp.domain.program.entity.Program;
 import com.mycom.myapp.domain.program.entity.Program.ProgramType;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
+import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
+import com.mycom.myapp.global.exception.CustomException;
+import com.mycom.myapp.global.exception.ErrorCode;
 
 /**
  * ProgramService 단위 테스트 (Mockito)
@@ -36,6 +39,9 @@ class ProgramServiceTest {
     private ProgramRepository programRepository;
 
     @Mock
+    private ProgramTrainerRepository programTrainerRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @InjectMocks
@@ -45,10 +51,10 @@ class ProgramServiceTest {
         return User.builder().id(id).email("trainer@test.com").password("pw").name("트레이너").build();
     }
 
-    private Program program(Long id, User trainer) {
+    private Program program(Long id) {
         return Program.builder()
                 .id(id).title("아침 PT").type(ProgramType.PT)
-                .trainer(trainer).capacity(5)
+                .capacity(5)
                 .startAt(LocalDateTime.now().plusDays(1))
                 .endAt(LocalDateTime.now().plusDays(1).plusHours(1))
                 .build();
@@ -70,15 +76,19 @@ class ProgramServiceTest {
         ProgramResponse response = programService.createProgram(request("새 수업"), 10L);
 
         assertThat(response.title()).isEqualTo("새 수업");
-        assertThat(response.trainerId()).isEqualTo(10L);
+        assertThat(response.trainers()).singleElement()
+                .extracting(ProgramResponse.TrainerResponse::id)
+                .isEqualTo(10L);
         verify(programRepository).save(any(Program.class));
     }
 
     @Test
     @DisplayName("프로그램 수정 성공 - 본인 프로그램")
     void updateProgram_success() {
-        Program program = program(100L, trainer(10L));
+        Program program = program(100L);
         given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
+                .willReturn(true);
 
         ProgramResponse response = programService.updateProgram(100L, request("수정된 수업"), 10L);
 
@@ -89,33 +99,35 @@ class ProgramServiceTest {
     @Test
     @DisplayName("프로그램 수정 실패 - 다른 트레이너의 프로그램")
     void updateProgram_notOwner() {
-        Program program = program(100L, trainer(10L));
+        Program program = program(100L);
         given(programRepository.findById(100L)).willReturn(Optional.of(program));
 
         assertThatThrownBy(() -> programService.updateProgram(100L, request("수정"), 99L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("본인이 담당한 프로그램만");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_ACCESS_DENIED);
     }
 
     @Test
-    @DisplayName("프로그램 삭제 성공 - 본인 프로그램")
+    @DisplayName("프로그램 삭제 요청 성공 - 본인 프로그램은 폐강 상태로 변경")
     void deleteProgram_success() {
-        Program program = program(100L, trainer(10L));
+        Program program = program(100L);
         given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
+                .willReturn(true);
 
         programService.deleteProgram(100L, 10L);
 
-        verify(programRepository).delete(program);
+        assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.CANCELED);
     }
 
     @Test
     @DisplayName("프로그램 삭제 실패 - 다른 트레이너의 프로그램이면 삭제 안 됨")
     void deleteProgram_notOwner() {
-        Program program = program(100L, trainer(10L));
+        Program program = program(100L);
         given(programRepository.findById(100L)).willReturn(Optional.of(program));
 
         assertThatThrownBy(() -> programService.deleteProgram(100L, 99L))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(CustomException.class);
         verify(programRepository, never()).delete(any(Program.class));
     }
 
@@ -125,7 +137,7 @@ class ProgramServiceTest {
         given(programRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> programService.getProgram(999L))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("존재하지 않는 프로그램");
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_NOT_FOUND);
     }
 }

@@ -1,21 +1,20 @@
 package com.mycom.myapp.domain.program.entity;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
-
-import com.mycom.myapp.domain.user.entity.User;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,10 +40,6 @@ public class Program {
     @Column(nullable = false)
     private ProgramType type;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trainer_id", nullable = false)
-    private User trainer;
-
     @Column(nullable = false)
     private int capacity;
 
@@ -57,8 +52,20 @@ public class Program {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private ProgramStatus status = ProgramStatus.OPEN;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "program")
+    private List<ProgramTrainer> trainerAssignments = new ArrayList<>();
+
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 
     public void update(String title, ProgramType type, int capacity,
                        LocalDateTime startAt, LocalDateTime endAt, String description) {
@@ -70,7 +77,23 @@ public class Program {
         this.description = description;
     }
 
+    public void cancel() {
+        this.status = ProgramStatus.CANCELED;
+    }
+
+    public void complete() {
+        this.status = ProgramStatus.COMPLETED;
+    }
+
+    public void addTrainerAssignment(ProgramTrainer assignment) {
+        this.trainerAssignments.add(assignment);
+    }
+
     public enum ProgramType {
         PT, GROUP
+    }
+
+    public enum ProgramStatus {
+        OPEN, CLOSED, CANCELED, COMPLETED
     }
 }

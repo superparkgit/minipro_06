@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import com.mycom.myapp.domain.program.entity.Program.ProgramType;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -28,4 +29,14 @@ public record ProgramRequest(
     LocalDateTime endAt,
 
     String description
-) {}
+) {
+
+    // 종료 시간이 시작 시간보다 빠르거나 같은 경우를 막는다
+    @AssertTrue(message = "종료 시간은 시작 시간보다 뒤여야 합니다.")
+    public boolean isValidPeriod() {
+        if (startAt == null || endAt == null) {
+            return true;   // null 여부는 @NotNull이 처리
+        }
+        return endAt.isAfter(startAt);
+    }
+}

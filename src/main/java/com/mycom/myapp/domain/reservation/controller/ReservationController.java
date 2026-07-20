@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mycom.myapp.domain.reservation.dto.ReservationRequest;
 import com.mycom.myapp.domain.reservation.dto.ReservationResponse;
+import com.mycom.myapp.domain.reservation.dto.AttendanceRequest;
 import com.mycom.myapp.domain.reservation.service.ReservationService;
-import com.mycom.myapp.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,33 +31,36 @@ public class ReservationController {
     @PostMapping("/api/reservations")
     public ResponseEntity<ReservationResponse> createReservation(
             @Valid @RequestBody ReservationRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal Long userId) {
         ReservationResponse response =
-                reservationService.createReservation(request, userDetails.getUserId());
+                reservationService.createReservation(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // 내 예약 목록
     @GetMapping("/api/reservations/me")
     public ResponseEntity<List<ReservationResponse>> getMyReservations(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(reservationService.getMyReservations(userDetails.getUserId()));
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(reservationService.getMyReservations(userId));
     }
 
     // 예약 취소 (본인만)
     @PatchMapping("/api/reservations/{id}/cancel")
     public ResponseEntity<Void> cancelReservation(
             @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        reservationService.cancelReservation(id, userDetails.getUserId());
+            @AuthenticationPrincipal Long userId) {
+        reservationService.cancelReservation(id, userId);
         return ResponseEntity.noContent().build();
     }
 
-    // 특정 프로그램의 예약자 목록 (TRAINER)
+    // 특정 프로그램의 예약자 목록 (TRAINER, 본인 프로그램만)
+    // 예약자 개인정보가 노출되므로 담당 트레이너 본인만 조회 가능
+    @PreAuthorize("hasRole('TRAINER')")
     @GetMapping("/api/programs/{id}/reservations")
     public ResponseEntity<List<ReservationResponse>> getReservationsByProgram(
-            @PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.getReservationsByProgram(id));
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(reservationService.getReservationsByProgram(id, userId));
     }
 
     // 예약 승인 (TRAINER, 본인 프로그램만)
@@ -65,8 +68,8 @@ public class ReservationController {
     @PatchMapping("/api/reservations/{id}/approve")
     public ResponseEntity<ReservationResponse> approveReservation(
             @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(reservationService.approveReservation(id, userDetails.getUserId()));
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(reservationService.approveReservation(id, userId));
     }
 
     // 예약 거절 (TRAINER, 본인 프로그램만)
@@ -74,7 +77,16 @@ public class ReservationController {
     @PatchMapping("/api/reservations/{id}/reject")
     public ResponseEntity<ReservationResponse> rejectReservation(
             @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(reservationService.rejectReservation(id, userDetails.getUserId()));
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(reservationService.rejectReservation(id, userId));
+    }
+
+    @PreAuthorize("hasRole('TRAINER')")
+    @PatchMapping("/api/reservations/{id}/attendance")
+    public ResponseEntity<ReservationResponse> markAttendance(
+            @PathVariable Long id,
+            @Valid @RequestBody AttendanceRequest request,
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(reservationService.markAttendance(id, userId, request));
     }
 }

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import com.mycom.myapp.domain.reservation.entity.Reservation;
 import com.mycom.myapp.domain.reservation.entity.Reservation.ReservationStatus;
+import com.mycom.myapp.domain.reservation.entity.Reservation.AttendanceStatus;
 
 public record ReservationResponse(
     Long id,
@@ -11,6 +12,7 @@ public record ReservationResponse(
     Long programId,
     String programName,
     ReservationStatus status,
+    AttendanceStatus attendanceStatus,
     LocalDateTime createdAt
 ) {
     public static ReservationResponse from(Reservation reservation) {
@@ -20,6 +22,7 @@ public record ReservationResponse(
             reservation.getProgram().getId(),
             reservation.getProgram().getTitle(),
             reservation.getStatus(),
+            reservation.getAttendanceStatus(),
             reservation.getCreatedAt()
         );
     }

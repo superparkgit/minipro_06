@@ -49,6 +49,11 @@ public class Reservation {
     @Builder.Default
     private ReservationStatus status = ReservationStatus.PENDING;  // 신청 시 대기 상태
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private AttendanceStatus attendanceStatus = AttendanceStatus.NOT_CHECKED;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
@@ -75,10 +80,21 @@ public class Reservation {
         return this.status == ReservationStatus.CANCELED;
     }
 
+    public void markAttendance(AttendanceStatus attendanceStatus) {
+        if (attendanceStatus == AttendanceStatus.NOT_CHECKED) {
+            throw new IllegalArgumentException("출석 처리 상태는 ATTENDED 또는 NO_SHOW여야 합니다.");
+        }
+        this.attendanceStatus = attendanceStatus;
+    }
+
     public enum ReservationStatus {
         PENDING,   // 대기 (신청 직후)
         APPROVED,  // 승인
         REJECTED,  // 거절
         CANCELED   // 취소
+    }
+
+    public enum AttendanceStatus {
+        NOT_CHECKED, ATTENDED, NO_SHOW
     }
 }

@@ -16,7 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/posts")
+@RequestMapping("api/posts")
 @RequiredArgsConstructor
 public class PostController {
 
@@ -47,7 +47,7 @@ public class PostController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/my")
+    @GetMapping("/me")
     public ResponseEntity<Page<PostResponseDto>> getMyPosts(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {

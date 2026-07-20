@@ -13,6 +13,7 @@ import com.mycom.myapp.domain.auth.dto.LoginRequest;
 import com.mycom.myapp.domain.auth.dto.SignupRequest;
 import com.mycom.myapp.domain.auth.dto.TokenResponse;
 import com.mycom.myapp.domain.auth.entity.RefreshToken;
+import com.mycom.myapp.domain.auth.exception.DuplicateEmailException;
 import com.mycom.myapp.domain.auth.repository.RefreshTokenRepository;
 import com.mycom.myapp.domain.security.CustomUserDetails;
 import com.mycom.myapp.domain.security.jwt.JwtUtil;
@@ -45,7 +46,9 @@ public class AuthServiceImpl implements AuthService{
 	@Transactional
 	public void signup(SignupRequest request) {
 		if(userRepository.existsByEmail(request.email())) {
-			throw new IllegalArgumentException("이미 사용 중인 이메일 입니다.");
+//			throw new IllegalArgumentException("이미 사용 중인 이메일 입니다.");
+			// 중복 이메일과 다른 잘못된 요청 구분
+			throw new DuplicateEmailException();
 		}
 		
 		User user = User.builder()

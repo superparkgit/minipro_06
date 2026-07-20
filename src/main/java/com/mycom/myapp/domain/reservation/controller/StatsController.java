@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 예약 통계 API.
- * JOIN / GROUP BY / 서브쿼리 연습 포인트를 API 로 노출한다.
+ * JOIN / GROUP BY / 서브쿼리 연습 포인트를 API 로 노출.
  */
 @RestController
 @RequestMapping("/api/stats")

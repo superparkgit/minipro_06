@@ -32,7 +32,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     /**
      * [서브쿼리] 예약이 한 건도 없는 프로그램 목록.
-     * NOT EXISTS 로 해당 프로그램을 참조하는 예약이 하나도 없는 프로그램만 조회한다.
+     * NOT EXISTS 로 해당 프로그램을 참조하는 예약이 하나도 없는 프로그램만 조회.
      */
     @Query("""
             SELECT p FROM Program p
@@ -45,7 +45,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     /**
      * [JOIN + GROUP BY] 트레이너별 기간 내 승인된 예약 건수.
-     * Reservation -> Program -> trainer(User) 를 조인해 트레이너별로 집계한다.
+     * Reservation -> Program -> trainer(User) 를 조인해 트레이너별로 집계.
      */
     @Query("""
             SELECT new com.mycom.myapp.domain.reservation.dto.TrainerStatsResponse(
@@ -66,7 +66,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     /**
      * [JOIN + GROUP BY] 승인 건수 기준 인기 프로그램.
-     * 상위 N개는 Service 에서 Pageable/limit 로 잘라 쓴다.
+     * 상위 N개는 Service 에서 Pageable/limit 로 잘라서 쓰.
      */
     @Query("""
             SELECT new com.mycom.myapp.domain.reservation.dto.ProgramStatsResponse(

@@ -4,7 +4,8 @@ import com.mycom.myapp.domain.global.exception.AccessDeniedException;
 import com.mycom.myapp.domain.global.exception.BusinessRuleException;
 import com.mycom.myapp.domain.global.exception.ResourceNotFoundException;
 import com.mycom.myapp.domain.program.entity.Program;
-import com.mycom.myapp.domain.reservation.entity.AttendanceStatus;
+import com.mycom.myapp.domain.program.entity.ProgramTrainer;
+import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
 import com.mycom.myapp.domain.reservation.entity.Reservation;
 import com.mycom.myapp.domain.reservation.repository.ReservationRepository;
 import com.mycom.myapp.domain.review.dto.*;
@@ -33,6 +34,7 @@ public class ReviewService {
     private final ReviewReplyRepository reviewReplyRepository;
     private final ReviewReportRepository reviewReportRepository;
     private final ReservationRepository reservationRepository;
+    private final ProgramTrainerRepository programTrainerRepository;
     private final UserRepository userRepository;
 
     /**
@@ -50,7 +52,7 @@ public class ReviewService {
             throw new AccessDeniedException("본인의 예약에만 리뷰를 작성할 수 있습니다.");
         }
 
-        if (reservation.getAttendanceStatus() != AttendanceStatus.ATTENDED) {
+        if (reservation.getAttendanceStatus() != Reservation.AttendanceStatus.ATTENDED) {
             throw new BusinessRuleException("참여 완료된 예약만 리뷰를 작성할 수 있습니다.");
         }
 
@@ -65,7 +67,10 @@ public class ReviewService {
 
         Program program = reservation.getProgram();
         User user = reservation.getUser();
-        User trainer = program.getTrainer();
+        User trainer = programTrainerRepository
+                .findByProgramIdAndAssignmentRole(program.getId(), ProgramTrainer.AssignmentRole.MAIN)
+                .orElseThrow(() -> new ResourceNotFoundException("담당 트레이너를 찾을 수 없습니다."))
+                .getTrainer();
 
         Review review = Review.builder()
                 .reservation(reservation)
@@ -128,7 +133,10 @@ public class ReviewService {
         User trainer = userRepository.findById(trainerId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자", trainerId));
 
-        if (trainer.getRole() != Role.TRAINER) {
+        boolean isTrainer = trainer.getUserRoles().stream()
+                .map(com.mycom.myapp.domain.user.entity.UserRole::getRoleName)
+                .anyMatch(r -> r == Role.ROLE_TRAINER);
+        if (!isTrainer) {
             throw new AccessDeniedException("트레이너만 답변을 등록할 수 있습니다.");
         }
 
@@ -160,7 +168,10 @@ public class ReviewService {
         User reporter = userRepository.findById(trainerId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자", trainerId));
 
-        if (reporter.getRole() != Role.TRAINER) {
+        boolean isTrainer = reporter.getUserRoles().stream()
+                .map(com.mycom.myapp.domain.user.entity.UserRole::getRoleName)
+                .anyMatch(r -> r == Role.ROLE_TRAINER);
+        if (!isTrainer) {
             throw new AccessDeniedException("트레이너만 삭제 요청을 할 수 있습니다.");
         }
 

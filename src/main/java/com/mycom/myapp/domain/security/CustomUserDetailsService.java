@@ -2,14 +2,19 @@ package com.mycom.myapp.domain.security;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.mycom.myapp.domain.user.entity.Role;
 import com.mycom.myapp.domain.user.entity.User;
+import com.mycom.myapp.domain.user.entity.UserRole;
 import com.mycom.myapp.domain.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -32,6 +37,7 @@ public class CustomUserDetailsService implements UserDetailsService{
 	 * @throws UsernameNotFoundException 이메일에 해당하는 회원이 없을 때
 	 */
 	@Override
+	@Transactional(readOnly = true)
 	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 		
 		// 사용자가 입력한 이메일로 회원 조회.
@@ -40,20 +46,30 @@ public class CustomUserDetailsService implements UserDetailsService{
 		if(optionalUser.isPresent()) {
 			User user = optionalUser.get();
 			
-			// User는 Role 하나 
-			// DB에 USER, TRAINER, ADMIN -> ROLE_USER, ROLE_TRAINER, ROLE_ADMIN 형식으로 변환.
-			List<SimpleGrantedAuthority> authorities = List.of(
-					new SimpleGrantedAuthority(
-							"ROLE_" + user.getRole().name()
-					));
+			/**
+			 * UserRole 엔티티 목록에서 Role enum 목록을 생성
+			 */
+	        Set<Role> roles = user.getUserRoles().stream()
+	                .map(UserRole::getRoleName)
+	                .collect(Collectors.toSet());
 			
+	        /**
+	         * DB 값에 ROLE_ 이 이미 있으므로 prefix를 추가하지 않음.
+	         */
+			List<SimpleGrantedAuthority> authorities =
+					roles.stream()
+						.map(Role::name)
+						.map(SimpleGrantedAuthority::new)
+						.toList();
+	        
 			return CustomUserDetails.builder()
 						.username(user.getEmail()) // Spring Security 계약 필드
 						.password(user.getPassword()) // BCrypt 암호화 비밀번호
-						.authorities(authorities) // 권한
+
 						.userId(user.getId()) // 추가 정보
 						.name(user.getName())
-						.role(user.getRole())
+						.roles(roles)
+						.authorities(authorities)
 						.build();
 		}
 		

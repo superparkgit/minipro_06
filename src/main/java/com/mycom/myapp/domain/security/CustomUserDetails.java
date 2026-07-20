@@ -1,6 +1,7 @@
 package com.mycom.myapp.domain.security;
 
 import java.util.Collection;
+import java.util.Set;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,8 +30,9 @@ public class CustomUserDetails implements UserDetails {
 	// 회원 이름
 	private final String name;
 	
-	// USER, TRAINER, ADMIN
-	private final Role role;
+//	// USER, TRAINER, ADMIN
+//	private final Role role;
+	private final Set<Role> roles;
 	
 	// ROLE_USER, ROLE_TRAINER, ROLE_ADMIN 형태의 권한 목록
 	// 권한 변환은 CustomUserDetailsService에서 수행.

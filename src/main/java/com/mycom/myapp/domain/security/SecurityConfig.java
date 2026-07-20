@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -24,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 	
 	private final JwtUtil jwtUtil;
-	private final CustomUserDetailsService customerUserDetailsService;
+	private final CustomUserDetailsService customUserDetailsService;
 
 	@Bean
 	PasswordEncoder passwordEncoder() {
@@ -60,24 +61,49 @@ public class SecurityConfig {
 								"/error",
 								"/.well-known/**"
 								).permitAll()
+						
 						// Auth
-						.requestMatchers(HttpMethod.POST, "/auth/signup"
-														, "/auth/login").permitAll() // 회원가입, 로그인
+						.requestMatchers(HttpMethod.POST, "/api/auth/signup" // 회원가입
+														, "/api/auth/login" // 로그인
+														, "/api/auth/refresh" // 로큰 재발급
+														, "/api/auth/logout").permitAll() // 로그아웃
+						
 						// Program
-						.requestMatchers(HttpMethod.POST, "/programs").hasRole("TRAINER") // 프로그램 등록
-						.requestMatchers(HttpMethod.PUT, "/programs/*").hasRole("TRAINER") // 프로그램 수정
-						.requestMatchers(HttpMethod.DELETE, "/programs/*").hasRole("TRAINER") // 프로그램 삭제
+						.requestMatchers(HttpMethod.POST, "/api/programs" // 프로그램 등록
+														, "/api/programs/*/trainers").hasRole("TRAINER") // 보조 강사 추가
+						.requestMatchers(HttpMethod.PATCH, "/api/programs/*" // 프로그램 수정
+										 				 , "/api/programs/*/close" // 모집 마감
+										 				 , "/api/programs/*/open" // 모집 재개
+										 				 , "/api/programs/*/cancel" // 폐강
+										 				 , "/api/programs/*/complete").hasRole("TRAINER") // 수업 완료
+						.requestMatchers(HttpMethod.DELETE, "/api/programs/*/trainers/*").hasRole("TRAINER") // 보조 강사 제거
+						
 						// Reservation
-						.requestMatchers(HttpMethod.POST, "/reservations").hasRole("USER") // 예약 신청
-						.requestMatchers(HttpMethod.PATCH, "/reservations/*/cancel").hasRole("USER") // 예약 취소 
-						.requestMatchers(HttpMethod.PATCH, "/reservations/*/approve"
-														 , "/reservations/*/reject").hasRole("TRAINER") // 예약 승인, 거절
+						.requestMatchers(HttpMethod.POST, "/api/reservations").authenticated() // 예약 신청
+						.requestMatchers(HttpMethod.PATCH, "/api/reservations/*/approve" // 예약 승인
+														 , "/api/reservations/*/reject" // 예약 거절
+														 , "/api/reservations/*/attendance").hasRole("TRAINER") // 출석, 결석 처리
+						// Review
+						.requestMatchers(HttpMethod.GET, "/api/reviews").permitAll() // 리뷰 목록, 평점 조회
+						.requestMatchers(HttpMethod.POST, "/api/reviews").authenticated() // 리뷰 작성
+						.requestMatchers(HttpMethod.POST, "/api/reviews/*/reply" // 리뷰 답변
+														, "/api/reviews/*/reports").hasRole("TRAINER") // 리뷰 신고, 숨김
+						.requestMatchers(HttpMethod.PATCH, "/api/reviews/*").authenticated() // 리뷰 수정
+							.requestMatchers(HttpMethod.DELETE, "/api/reviews/*").authenticated() // 리뷰 삭제
+						
 						// Board
-						.requestMatchers(HttpMethod.GET, "/posts").permitAll() // 게시글 목록 
-						.requestMatchers(HttpMethod.POST, "/posts").hasAnyRole("USER", "TRAINER", "ADMIN") // 게시글 작성
-						// 게시글 수정, 삭제 Service에서 사용자 확인. 
-						.requestMatchers(HttpMethod.PUT, "/posts/*").authenticated() // 게시글 수정
-						.requestMatchers(HttpMethod.DELETE, "/posts/*").authenticated() // 게시글 삭제
+						.requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
+
+						.requestMatchers(HttpMethod.POST,"/api/posts").hasAnyRole("USER", "TRAINER", "ADMIN")
+
+						// 작성자 여부는 PostService에서 확인
+						.requestMatchers(HttpMethod.PUT, "/api/posts/*").authenticated()
+
+						.requestMatchers(HttpMethod.DELETE, "/api/posts/*").authenticated()
+							
+						// ADMIN
+						.requestMatchers("/api/admin/**").hasRole("ADMIN")
+						
 						.anyRequest().authenticated() // 위에서 정의하지 않은 요청은 로그인이 필요.
 						)
 				// 로그인 처리 -> 
@@ -92,7 +118,7 @@ public class SecurityConfig {
 			// UsernamepasswordAuthenticationFilter 앞에서 처리할 필요 (filter chain 단계에서)
 			// Spring Security 는 JWT 인증 필터 제공 X <= 우리가 직접 Filter 생성
 						.addFilterBefore(
-								new JwtAuthenticationFilter(jwtUtil, customerUserDetailsService),
+								new JwtAuthenticationFilter(jwtUtil, customUserDetailsService),
 								UsernamePasswordAuthenticationFilter.class)
 						.build();
 	}

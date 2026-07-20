@@ -109,6 +109,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter{
 	 * JwtUtil getTokenFromHeader(...) -> X-AUTH-TOKEN: ...
 	 * 현재
 	 * Authorization: Bearer ...
+	 * 프론트에서
+	 * fetch("/...", {
+		    headers: {
+		        Authorization: `Bearer ${accessToken}`
+		    }
+		});
 	 */
 	private String resolveToken(HttpServletRequest request) {
 		String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);

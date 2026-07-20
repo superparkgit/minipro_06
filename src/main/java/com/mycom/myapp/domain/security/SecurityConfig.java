@@ -10,6 +10,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.mycom.myapp.domain.security.handler.CustomAccessDeniedHandler;
+import com.mycom.myapp.domain.security.handler.CustomAuthenticationEntryPoint;
 import com.mycom.myapp.domain.security.jwt.JwtAuthenticationFilter;
 import com.mycom.myapp.domain.security.jwt.JwtUtil;
 
@@ -28,7 +30,9 @@ public class SecurityConfig {
 	}
 	
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http,
+											CustomAuthenticationEntryPoint entryPoint,
+											CustomAccessDeniedHandler accessDeniedHandler) throws Exception {
 		return http
 				// JWT 에서 httpBasic, formLogin 사용 X
 				.httpBasic(httpBasic -> httpBasic.disable())
@@ -63,6 +67,13 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.PUT, "/posts/*").authenticated() // 게시글 수정
 						.requestMatchers(HttpMethod.DELETE, "/posts/*").authenticated() // 게시글 삭제
 						.anyRequest().authenticated() // 위에서 정의하지 않은 요청은 로그인이 필요.
+						)
+				// 로그인 처리 -> 
+				// 로그인 된 사용자 판별 ( token 검증 ) 이 실패한 경우
+				// 우리의 코드에서 이 상황을 처리하는 처리자 필요 <- CustomAuthenticationEntryPoint
+						.exceptionHandling(exceptionHandling -> 
+							exceptionHandling.authenticationEntryPoint(entryPoint) // 401
+											.accessDeniedHandler(accessDeniedHandler) // 403
 						)
 			// jwt 검증 관련 코드 
 			// Spring Security의 기본 인증 필터는 UsernamePasswordAuthenticationFilter ( form login 방식 ) <= jwt 기반이므로 우리의 코드는

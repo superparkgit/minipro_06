@@ -76,7 +76,7 @@ public class ReviewController {
     public ResponseEntity<ReviewReplyResponseDto> createReply(
             @PathVariable Long reviewId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReviewReplyRequestDto requestDto) {
+            @Valid @RequestBody ReviewReplyRequestDto requestDto) {
         ReviewReplyResponseDto response = reviewService.createReply(
                 reviewId, userDetails.getUserId(), requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -89,7 +89,7 @@ public class ReviewController {
     public ResponseEntity<ReviewReportResponseDto> reportReview(
             @PathVariable Long reviewId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReviewReportRequestDto requestDto) {
+            @Valid @RequestBody ReviewReportRequestDto requestDto) {
         ReviewReportResponseDto response = reviewService.reportReview(
                 reviewId, userDetails.getUserId(), requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

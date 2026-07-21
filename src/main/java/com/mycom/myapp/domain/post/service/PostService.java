@@ -61,9 +61,15 @@ public class PostService {
         return PostResponseDto.from(savedPost);
     }
 
-    public PostResponseDto getPostById(Long postId) {
+    @Transactional
+    public PostResponseDto getPostById(Long postId, boolean shouldIncreaseViewCount) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("게시글", postId));
+        
+        if (shouldIncreaseViewCount) {
+            post.incrementViewCount();
+        }
+        
         return PostResponseDto.from(post);
     }
 

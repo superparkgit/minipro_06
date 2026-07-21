@@ -25,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -153,13 +156,18 @@ public class ReviewService {
      * 프로그램별 리뷰 목록 (VISIBLE만, 공개)
      */
     public Page<ReviewResponseDto> getReviewsByProgram(Long programId, Pageable pageable) {
-        return reviewRepository.findByProgramIdAndStatus(programId, ReviewStatus.VISIBLE, pageable)
-                .map(review -> {
-                    ReviewReplyResponseDto replyDto = reviewReplyRepository.findByReviewId(review.getId())
-                            .map(ReviewReplyResponseDto::from)
-                            .orElse(null);
-                    return ReviewResponseDto.from(review, replyDto);
-                });
+        Page<Review> reviews = reviewRepository.findByProgramIdAndStatus(programId, ReviewStatus.VISIBLE, pageable);
+        
+        List<Long> reviewIds = reviews.stream().map(Review::getId).toList();
+        List<ReviewReply> replies = reviewReplyRepository.findByReviewIdIn(reviewIds);
+        Map<Long, ReviewReply> replyMap = replies.stream()
+                .collect(Collectors.toMap(r -> r.getReview().getId(), r -> r));
+        
+        return reviews.map(review -> {
+            ReviewReply reply = replyMap.get(review.getId());
+            ReviewReplyResponseDto replyDto = reply != null ? ReviewReplyResponseDto.from(reply) : null;
+            return ReviewResponseDto.from(review, replyDto);
+        });
     }
 
     /**

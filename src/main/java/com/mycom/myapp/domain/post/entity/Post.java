@@ -52,6 +52,9 @@ public class Post {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(nullable = false)
+    private int viewCount;
+
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 
@@ -67,6 +70,11 @@ public class Post {
         this.category = category;
         this.title = title;
         this.content = content;
+        this.viewCount = 0;
+    }
+
+    public void incrementViewCount() {
+        this.viewCount++;
     }
 
     public void update(String title, String content, Category category) {

@@ -11,10 +11,12 @@ import java.time.LocalDateTime;
 @Builder
 public class PostResponseDto {
     private Long id;
+    private Long writerId;
     private String writerName;
     private Category category;
     private String title;
     private String content;
+    private int viewCount;
     private int commentCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -22,10 +24,12 @@ public class PostResponseDto {
     public static PostResponseDto from(Post post) {
         return PostResponseDto.builder()
                 .id(post.getId())
+                .writerId(post.getWriter().getId())
                 .writerName(post.getWriter().getName())
                 .category(post.getCategory())
                 .title(post.getTitle())
                 .content(post.getContent())
+                .viewCount(post.getViewCount())
                 .commentCount(post.getComments().size())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())

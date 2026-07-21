@@ -7,6 +7,7 @@ import com.mycom.myapp.domain.post.dto.PostResponseDto;
 import com.mycom.myapp.domain.post.entity.Category;
 import com.mycom.myapp.domain.post.entity.Post;
 import com.mycom.myapp.domain.post.repository.PostRepository;
+import com.mycom.myapp.domain.user.entity.Role;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,8 @@ public class PostService {
         User writer = userRepository.findById(writerId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자", writerId));
 
+        validateNoticePermission(requestDto.getCategory(), writer);
+
         Post post = Post.builder()
                 .writer(writer)
                 .category(requestDto.getCategory())
@@ -78,8 +81,20 @@ public class PostService {
             throw new AccessDeniedException("게시글 수정 권한이 없습니다.");
         }
 
+        validateNoticePermission(requestDto.getCategory(), post.getWriter());
+
         post.update(requestDto.getTitle(), requestDto.getContent(), requestDto.getCategory());
         return PostResponseDto.from(post);
+    }
+
+    private void validateNoticePermission(Category category, User user) {
+        if (category == Category.NOTICE) {
+            boolean isAdmin = user.getUserRoles().stream()
+                    .anyMatch(r -> r.getRoleName() == Role.ROLE_ADMIN);
+            if (!isAdmin) {
+                throw new AccessDeniedException("공지사항은 관리자만 작성할 수 있습니다.");
+            }
+        }
     }
 
     @Transactional

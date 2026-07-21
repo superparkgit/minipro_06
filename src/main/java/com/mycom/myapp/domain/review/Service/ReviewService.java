@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -61,12 +62,14 @@ public class ReviewService {
             throw new BusinessRuleException("이미 리뷰를 작성한 예약입니다.");
         }
 
+        Program program = reservation.getProgram();
+        validateReviewPeriod(program);
+
         int rating = requestDto.getRating();
         if (rating < 1 || rating > 5) {
             throw new BusinessRuleException("평점은 1~5 사이여야 합니다.");
         }
 
-        Program program = reservation.getProgram();
         User user = reservation.getUser();
         User trainer = programTrainerRepository
                 .findByProgramIdAndAssignmentRole(program.getId(), ProgramTrainer.AssignmentRole.MAIN)
@@ -101,6 +104,8 @@ public class ReviewService {
             throw new BusinessRuleException("수정할 수 없는 상태의 리뷰입니다.");
         }
 
+        validateReviewPeriod(review.getProgram());
+
         int rating = requestDto.getRating();
         if (rating < 1 || rating > 5) {
             throw new BusinessRuleException("평점은 1~5 사이여야 합니다.");
@@ -133,6 +138,15 @@ public class ReviewService {
         }
 
         review.markUserDeleted();
+    }
+
+    /**
+     * 리뷰 작성/수정 기한 검증 (프로그램 종료일로부터 30일 이내)
+     */
+    private void validateReviewPeriod(Program program) {
+        if (LocalDateTime.now().isAfter(program.getEndAt().plusDays(30))) {
+            throw new BusinessRuleException("프로그램 종료일로부터 30일 이내에만 리뷰를 작성 및 수정할 수 있습니다.");
+        }
     }
 
     /**

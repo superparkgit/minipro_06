@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api")
@@ -27,7 +28,7 @@ public class ReviewController {
     public ResponseEntity<ReviewResponseDto> createReview(
             @PathVariable Long reservationId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReviewRequestDto requestDto) {
+            @Valid @RequestBody ReviewRequestDto requestDto) {
         ReviewResponseDto response = reviewService.createReview(
                 reservationId, userDetails.getUserId(), requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -40,7 +41,7 @@ public class ReviewController {
     public ResponseEntity<ReviewResponseDto> updateReview(
             @PathVariable Long reviewId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReviewRequestDto requestDto) {
+            @Valid @RequestBody ReviewRequestDto requestDto) {
         ReviewResponseDto response = reviewService.updateReview(
                 reviewId, userDetails.getUserId(), requestDto);
         return ResponseEntity.ok(response);

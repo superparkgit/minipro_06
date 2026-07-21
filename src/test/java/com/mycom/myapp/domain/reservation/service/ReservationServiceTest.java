@@ -21,6 +21,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.mycom.myapp.domain.program.entity.Program;
 import com.mycom.myapp.domain.program.entity.Program.ProgramType;
+import com.mycom.myapp.domain.program.entity.ProgramTrainer;
+import com.mycom.myapp.domain.program.entity.ProgramTrainer.AssignmentRole;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
 import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
 import com.mycom.myapp.domain.reservation.dto.ReservationRequest;
@@ -299,5 +301,98 @@ class ReservationServiceTest {
         ReservationResponse response = reservationService.rejectReservation(500L, 10L);
 
         assertThat(response.status()).isEqualTo(ReservationStatus.REJECTED);
+    }
+
+    // ===== 폐강/종료 수업의 예약 처리 차단 =====
+
+    @Test
+    @DisplayName("예약 승인 실패 - 폐강된 수업의 대기 예약은 승인 불가")
+    void approveReservation_canceledProgram() {
+        Program program = program(100L, user(10L, "트레이너"), 5);
+        program.cancel();   // CANCELED
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        assertThatThrownBy(() -> reservationService.approveReservation(500L, 10L))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("출석 처리 실패 - 수업이 종료되지 않았으면 출석 처리 불가")
+    void markAttendance_programNotCompleted() {
+        Program program = program(100L, user(10L, "트레이너"), 5);   // OPEN 상태
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        assertThatThrownBy(() -> reservationService.markAttendance(
+                500L, 10L, new AttendanceRequest(AttendanceStatus.ATTENDED)))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+
+        assertThat(reservation.getAttendanceStatus()).isEqualTo(AttendanceStatus.NOT_CHECKED);
+    }
+
+    // ===== 리뷰 작성 자격 검증 =====
+
+    @Test
+    @DisplayName("리뷰 자격 검증 성공 - 출석 완료 시 MAIN 트레이너 ID 반환")
+    void verifyReviewEligible_success() {
+        User trainer = user(10L, "트레이너");
+        Program program = program(100L, trainer, 5);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        reservation.markAttendance(AttendanceStatus.ATTENDED);
+
+        ProgramTrainer mainAssignment = ProgramTrainer.builder()
+                .program(program).trainer(trainer)
+                .assignmentRole(AssignmentRole.MAIN)
+                .build();
+
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.findByProgramIdAndAssignmentRole(100L, AssignmentRole.MAIN))
+                .willReturn(Optional.of(mainAssignment));
+
+        Long trainerId = reservationService.verifyReviewEligible(500L, 1L);
+
+        assertThat(trainerId).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("리뷰 자격 검증 실패 - 결석한 회원은 리뷰 작성 불가")
+    void verifyReviewEligible_noShow() {
+        Program program = program(100L, user(10L, "트레이너"), 5);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        reservation.markAttendance(AttendanceStatus.NO_SHOW);
+
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.verifyReviewEligible(500L, 1L))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
+    @DisplayName("리뷰 자격 검증 실패 - 본인 예약이 아니면 차단")
+    void verifyReviewEligible_notOwner() {
+        Program program = program(100L, user(10L, "트레이너"), 5);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        reservation.markAttendance(AttendanceStatus.ATTENDED);
+
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.verifyReviewEligible(500L, 99L))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN);
     }
 }

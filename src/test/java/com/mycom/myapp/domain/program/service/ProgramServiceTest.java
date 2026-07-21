@@ -140,4 +140,71 @@ class ProgramServiceTest {
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_NOT_FOUND);
     }
+
+    // ===== 수업 완료 처리 =====
+
+    @Test
+    @DisplayName("수업 완료 성공 - MAIN 트레이너가 처리하면 COMPLETED 로 변경")
+    void completeProgram_success() {
+        Program program = program(100L);
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
+                .willReturn(true);
+
+        programService.completeProgram(100L, 10L);
+
+        assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("수업 완료 실패 - 담당 MAIN 트레이너가 아니면 처리 불가")
+    void completeProgram_notMainTrainer() {
+        Program program = program(100L);
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> programService.completeProgram(100L, 99L))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_ACCESS_DENIED);
+
+        assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.OPEN);
+    }
+
+    @Test
+    @DisplayName("수업 완료 실패 - 이미 폐강된 수업은 완료 처리 불가")
+    void completeProgram_canceled() {
+        Program program = program(100L);
+        program.cancel();   // CANCELED 상태로 변경
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
+                .willReturn(true);
+
+        assertThatThrownBy(() -> programService.completeProgram(100L, 10L))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+
+        assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.CANCELED);
+    }
+
+    // ===== 보조 강사 배정 =====
+
+    @Test
+    @DisplayName("보조 강사 등록 실패 - 트레이너 역할이 없는 일반 회원은 배정 불가")
+    void addAssistant_notTrainerRole() {
+        Program program = program(100L);
+        User normalMember = User.builder()
+                .id(50L).email("user@test.com").password("pw").name("일반회원")
+                .build();   // roles 비어 있음 = ROLE_TRAINER 없음
+
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
+                .willReturn(true);
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 50L)).willReturn(false);
+        given(userRepository.findById(50L)).willReturn(Optional.of(normalMember));
+
+        assertThatThrownBy(() -> programService.addAssistant(100L, 50L, 10L))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+    }
 }

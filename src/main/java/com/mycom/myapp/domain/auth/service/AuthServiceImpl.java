@@ -10,12 +10,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.mycom.myapp.domain.auth.dto.AccessTokenResponse;
 import com.mycom.myapp.domain.auth.dto.LoginRequest;
+import com.mycom.myapp.domain.auth.dto.RefreshTokenRequest;
 import com.mycom.myapp.domain.auth.dto.SignupRequest;
 import com.mycom.myapp.domain.auth.dto.SignupResponse;
 import com.mycom.myapp.domain.auth.dto.TokenResponse;
 import com.mycom.myapp.domain.auth.entity.RefreshToken;
 import com.mycom.myapp.domain.auth.exception.DuplicateEmailException;
+import com.mycom.myapp.domain.auth.exception.InvalidRefreshTokenException;
 import com.mycom.myapp.domain.auth.repository.RefreshTokenRepository;
 import com.mycom.myapp.domain.security.CustomUserDetails;
 import com.mycom.myapp.domain.security.jwt.JwtUtil;
@@ -125,6 +128,50 @@ public class AuthServiceImpl implements AuthService{
         
         return new TokenResponse(TOKEN_TYPE, accessToken, refreshToken);
         
+	}
+
+	@Override
+	@Transactional
+	public AccessTokenResponse refresh(RefreshTokenRequest request) {
+		String refreshToken = request.refreshToken();
+		
+		// JWT 서명, 만료시간, REFRESH 인지 검증.
+		Claims claims = jwtUtil.validateRefreshToken(refreshToken);
+		if(claims == null) throw new InvalidRefreshTokenException();
+		
+		// 로그인 할 때 DB에 저장했던 Refresh token 확인.
+		RefreshToken savedRefreshToken = refreshTokenRepository
+											.findByToken(refreshToken)
+											.orElseThrow(InvalidRefreshTokenException::new);
+		// JWT에 저장된 이메일과 토큰 소유가 이메일이 같은지 확인.
+		String email = claims.getSubject();
+		if(!savedRefreshToken.getUser().getEmail().equals(email)) throw new InvalidRefreshTokenException();
+		
+		String newAccessToken = jwtUtil.createAccessToken(email);
+		return new AccessTokenResponse(TOKEN_TYPE, newAccessToken);
+		
+	}
+
+	@Override
+	@Transactional
+	public void logout(RefreshTokenRequest request) {
+		String refreshToken = request.refreshToken();
+		
+		// JWT 서명, 만료시간, REFRESH 인지 검증.
+		Claims claims = jwtUtil.validateRefreshToken(refreshToken);
+		if(claims == null) throw new InvalidRefreshTokenException();
+		
+		// 로그인 할 때 DB에 저장했던 Refresh token 확인.
+		RefreshToken savedRefreshToken = refreshTokenRepository
+											.findByToken(refreshToken)
+											.orElseThrow(InvalidRefreshTokenException::new);
+		// JWT에 저장된 이메일과 토큰 소유가 이메일이 같은지 확인.
+		String email = claims.getSubject();
+		if(!savedRefreshToken.getUser().getEmail().equals(email)) throw new InvalidRefreshTokenException();
+		
+		// Refresh Token 삭제
+		refreshTokenRepository.delete(savedRefreshToken);
+		
 	}
 
 }

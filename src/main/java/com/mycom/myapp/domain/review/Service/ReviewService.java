@@ -56,7 +56,8 @@ public class ReviewService {
             throw new BusinessRuleException("참여 완료된 예약만 리뷰를 작성할 수 있습니다.");
         }
 
-        if (reviewRepository.existsByReservationId(reservationId)) {
+        // USER_DELETED(작성자 직접 삭제)인 경우 재작성 허용, 그 외 상태는 중복으로 간주
+        if (reviewRepository.existsByReservationIdAndStatusNot(reservationId, ReviewStatus.USER_DELETED)) {
             throw new BusinessRuleException("이미 리뷰를 작성한 예약입니다.");
         }
 
@@ -107,6 +108,31 @@ public class ReviewService {
 
         review.update(rating, requestDto.getContent());
         return ReviewResponseDto.from(review);
+    }
+
+    /**
+     * 리뷰 삭제 (작성자 본인만)
+     * - USER_DELETED 처리 → 재작성 가능
+     * - ADMIN_DELETED(관리자 삭제)된 리뷰는 작성자도 조작 불가
+     */
+    @Transactional
+    public void deleteReview(Long reviewId, Long userId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("리뷰", reviewId));
+
+        if (!review.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("리뷰 삭제 권한이 없습니다.");
+        }
+
+        if (review.getStatus() == ReviewStatus.USER_DELETED) {
+            throw new BusinessRuleException("이미 삭제된 리뷰입니다.");
+        }
+
+        if (review.getStatus() == ReviewStatus.ADMIN_DELETED) {
+            throw new BusinessRuleException("관리자에 의해 삭제된 리뷰는 수정하거나 삭제할 수 없습니다.");
+        }
+
+        review.markUserDeleted();
     }
 
     /**
@@ -227,7 +253,7 @@ public class ReviewService {
 
         if (decision == ReportStatus.APPROVED) {
             report.approve();
-            review.markDeleted();
+            review.markAdminDeleted(); // 신고 승인 → 관리자 삭제
         } else if (decision == ReportStatus.REJECTED) {
             report.reject();
             review.restore();

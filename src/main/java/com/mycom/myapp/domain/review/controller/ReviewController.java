@@ -47,6 +47,17 @@ public class ReviewController {
     }
 
     /**
+     * 리뷰 삭제 (작성자 본인)
+     */
+    @DeleteMapping("/reviews/{reviewId}")
+    public ResponseEntity<Void> deleteReview(
+            @PathVariable Long reviewId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        reviewService.deleteReview(reviewId, userDetails.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * 프로그램별 리뷰 목록 (VISIBLE만, 전체 공개)
      */
     @GetMapping("/programs/{programId}/reviews")

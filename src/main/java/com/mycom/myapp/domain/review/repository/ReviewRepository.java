@@ -12,7 +12,8 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
-    boolean existsByReservationId(Long reservationId);
+    // USER_DELETED가 아닌 상태의 리뷰가 존재하는지 확인 (재작성 가능 여부 판단용)
+    boolean existsByReservationIdAndStatusNot(Long reservationId, ReviewStatus status);
 
     Optional<Review> findByReservationId(Long reservationId);
 

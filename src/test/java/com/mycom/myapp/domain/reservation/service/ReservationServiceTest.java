@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.time.LocalDateTime;
@@ -292,5 +293,93 @@ class ReservationServiceTest {
         ReservationResponse response = reservationService.rejectReservation(500L, 10L);
 
         assertThat(response.status()).isEqualTo(ReservationStatus.REJECTED);
+    }
+    @Test
+    @DisplayName("예약 신청 실패 - 폐강된 프로그램은 예약할 수 없음")
+    void createReservation_canceledProgram() {
+        Program program = program(100L, user(10L, "트레이너"), 5);
+        program.cancel();
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+
+        assertThatThrownBy(() ->
+                reservationService.createReservation(new ReservationRequest(100L), 1L))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(reservationRepository, never()).save(any(Reservation.class));
+    }
+
+    @Test
+    @DisplayName("예약 승인 실패 - 폐강된 프로그램의 예약은 승인할 수 없음")
+    void approveReservation_canceledProgram() {
+        Program program = program(100L, user(10L, "트레이너"), 5);
+        program.cancel();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        assertThatThrownBy(() -> reservationService.approveReservation(500L, 10L))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("출석 처리 실패 - 수업이 완료되지 않으면 출석 처리할 수 없음")
+    void markAttendance_programNotCompleted() {
+        Program program = program(100L, user(10L, "트레이너"), 1);
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        assertThatThrownBy(() -> reservationService.markAttendance(
+                500L, 10L, new AttendanceRequest(AttendanceStatus.ATTENDED)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(reservation.getAttendanceStatus()).isEqualTo(AttendanceStatus.NOT_CHECKED);
+    }
+
+    @Test
+    @DisplayName("출석 처리 실패 - 담당 트레이너가 아니면 출석 처리 불가")
+    void markAttendance_notAssignedTrainer() {
+        Program program = program(100L, user(10L, "트레이너"), 1);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 99L)).willReturn(false);
+
+        assertThatThrownBy(() -> reservationService.markAttendance(
+                500L, 99L, new AttendanceRequest(AttendanceStatus.ATTENDED)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(reservation.getAttendanceStatus()).isEqualTo(AttendanceStatus.NOT_CHECKED);
+    }
+
+    @Test
+    @DisplayName("출석 처리 실패 - 승인되지 않은 예약은 출석 처리할 수 없음")
+    void markAttendance_reservationNotApproved() {
+        Program program = program(100L, user(10L, "트레이너"), 1);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        assertThatThrownBy(() -> reservationService.markAttendance(
+                500L, 10L, new AttendanceRequest(AttendanceStatus.ATTENDED)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(reservation.getAttendanceStatus()).isEqualTo(AttendanceStatus.NOT_CHECKED);
+    }
+
+    @Test
+    @DisplayName("출석 처리 실패 - NOT_CHECKED 상태로 처리할 수 없음")
+    void markAttendance_notCheckedStatus() {
+        Program program = program(100L, user(10L, "트레이너"), 1);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        assertThatThrownBy(() -> reservationService.markAttendance(
+                500L, 10L, new AttendanceRequest(AttendanceStatus.NOT_CHECKED)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(reservation.getAttendanceStatus()).isEqualTo(AttendanceStatus.NOT_CHECKED);
     }
 }

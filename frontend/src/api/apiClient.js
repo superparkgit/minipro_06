@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { AUTH_STORAGE_KEYS } from '../auth/authStorage'
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api',
@@ -6,7 +7,7 @@ const apiClient = axios.create({
 })
 
 apiClient.interceptors.request.use((config) => {
-  const accessToken = localStorage.getItem('accessToken')
+  const accessToken = localStorage.getItem(AUTH_STORAGE_KEYS.accessToken)
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
   }
@@ -19,7 +20,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const request = error.config
-    const refreshToken = localStorage.getItem('refreshToken')
+    const refreshToken = localStorage.getItem(AUTH_STORAGE_KEYS.refreshToken)
 
     if (error.response?.status !== 401 || request?._retry || !refreshToken) {
       return Promise.reject(error)
@@ -29,12 +30,12 @@ apiClient.interceptors.response.use(
     refreshRequest ??= apiClient
       .post('/auth/refresh', { refreshToken })
       .then(({ data }) => {
-        localStorage.setItem('accessToken', data.accessToken)
+        localStorage.setItem(AUTH_STORAGE_KEYS.accessToken, data.accessToken)
         return data.accessToken
       })
       .catch((refreshError) => {
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
+        localStorage.removeItem(AUTH_STORAGE_KEYS.accessToken)
+        localStorage.removeItem(AUTH_STORAGE_KEYS.refreshToken)
         window.dispatchEvent(new Event('auth:expired'))
         throw refreshError
       })

@@ -258,6 +258,7 @@ class PostServiceTest {
 
             postService.deletePost(10L, 1L);
 
+            verify(commentRepository).deleteByPostId(10L);
             verify(postRepository).delete(post);
         }
 

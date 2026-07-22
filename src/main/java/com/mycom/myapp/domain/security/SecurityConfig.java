@@ -134,6 +134,9 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/reviews/*/replies"
 														, "/api/reviews/*/reports").hasRole("TRAINER")
 						
+							// 담당 트레이너 (답변 수정)
+						.requestMatchers(HttpMethod.PUT, "/api/reviews/*/replies").hasRole("TRAINER")
+
 						// Admin
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 

@@ -44,6 +44,9 @@ public class CommentService {
     }
 
     public Page<CommentResponseDto> getCommentsByPost(Long postId, Pageable pageable) {
+        if (!postRepository.existsById(postId)) {
+            throw new ResourceNotFoundException("게시글", postId);
+        }
         return commentRepository.findByPostId(postId, pageable)
                 .map(CommentResponseDto::from);
     }

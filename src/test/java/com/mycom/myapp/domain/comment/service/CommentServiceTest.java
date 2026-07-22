@@ -141,6 +141,7 @@ class CommentServiceTest {
             Comment c1 = buildComment(1L, writer, post, "첫번째");
             Comment c2 = buildComment(2L, writer, post, "두번째");
 
+            given(postRepository.existsById(10L)).willReturn(true);
             given(commentRepository.findByPostId(eq(10L), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(c1, c2)));
 
@@ -154,12 +155,22 @@ class CommentServiceTest {
         @Test
         @DisplayName("성공 - 빈 목록 반환")
         void success_empty() {
+            given(postRepository.existsById(10L)).willReturn(true);
             given(commentRepository.findByPostId(eq(10L), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of()));
 
             Page<CommentResponseDto> result = commentService.getCommentsByPost(10L, PageRequest.of(0, 10));
 
             assertThat(result.getContent()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("실패 - 존재하지 않는 게시글")
+        void fail_postNotFound() {
+            given(postRepository.existsById(999L)).willReturn(false);
+
+            assertThatThrownBy(() -> commentService.getCommentsByPost(999L, PageRequest.of(0, 10)))
+                    .isInstanceOf(ResourceNotFoundException.class);
         }
     }
 

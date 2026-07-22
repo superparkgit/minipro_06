@@ -1,4 +1,4 @@
-package com.mycom.myapp.domain.review.Service;
+package com.mycom.myapp.domain.review.service;
 
 import com.mycom.myapp.domain.global.exception.AccessDeniedException;
 import com.mycom.myapp.domain.global.exception.BusinessRuleException;

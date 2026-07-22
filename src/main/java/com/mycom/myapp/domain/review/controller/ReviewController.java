@@ -1,6 +1,6 @@
 package com.mycom.myapp.domain.review.controller;
 
-import com.mycom.myapp.domain.review.Service.ReviewService;
+import com.mycom.myapp.domain.review.service.ReviewService;
 import com.mycom.myapp.domain.review.dto.*;
 import com.mycom.myapp.domain.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;

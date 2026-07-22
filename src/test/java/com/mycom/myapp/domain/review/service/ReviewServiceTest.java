@@ -1,4 +1,4 @@
-package com.mycom.myapp.domain.review.Service;
+package com.mycom.myapp.domain.review.service;
 
 import com.mycom.myapp.domain.global.exception.AccessDeniedException;
 import com.mycom.myapp.domain.global.exception.BusinessRuleException;
@@ -51,7 +51,6 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

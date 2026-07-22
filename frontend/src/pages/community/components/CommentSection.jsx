@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createComment, deleteComment, getComments, updateComment } from '../../../api/commentApi'
 import { getApiErrorMessage } from '../../../api/apiError'
+import { useCurrentUser } from '../../../hooks/useCurrentUser'
 import Pagination from '../../../components/Pagination'
 
 const formatDateTime = (value) => value
@@ -8,6 +9,7 @@ const formatDateTime = (value) => value
   : ''
 
 function CommentSection({ postId }) {
+  const { user } = useCurrentUser()
   const [comments, setComments] = useState([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -117,10 +119,12 @@ function CommentSection({ postId }) {
             ) : (
               <>
                 <p>{comment.content}</p>
-                <div className="row-actions">
-                  <button className="button button-secondary" onClick={() => startEdit(comment)}>수정</button>
-                  <button className="button button-danger" onClick={() => remove(comment.id)}>삭제</button>
-                </div>
+                {user?.id === comment.writerId && (
+                  <div className="row-actions">
+                    <button className="button button-secondary" onClick={() => startEdit(comment)}>수정</button>
+                    <button className="button button-danger" onClick={() => remove(comment.id)}>삭제</button>
+                  </div>
+                )}
               </>
             )}
           </li>

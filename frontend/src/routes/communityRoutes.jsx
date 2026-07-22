@@ -1,11 +1,3 @@
-<<<<<<< Updated upstream
-import PostsPage from '../pages/community/PostsPage'
-import ReviewsPage from '../pages/review/ReviewsPage'
-
-export const communityRoutes = [
-  { path: '/posts', element: <PostsPage /> },
-  { path: '/reviews', element: <ReviewsPage /> },
-=======
 import PostDetailPage from '../pages/community/PostDetailPage'
 import PostFormPage from '../pages/community/PostFormPage'
 import PostListPage from '../pages/community/PostListPage'
@@ -22,13 +14,9 @@ export const communityRoutes = [
   { path: '/reviews/write', element: <ReviewFormPage /> },
   { path: '/reviews/:reviewId/edit', element: <ReviewFormPage /> },
   { path: '/admin/reviews', element: <AdminReviewModerationPage /> },
->>>>>>> Stashed changes
 ]
 
 export const communityNavigation = [
   { to: '/posts', label: '게시판' },
-<<<<<<< Updated upstream
-=======
   { to: '/admin/reviews', label: '리뷰 심사' },
->>>>>>> Stashed changes
 ]

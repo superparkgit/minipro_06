@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react'
 import { decideReviewReport, getAdminReviews } from '../../api/reviewApi'
 import { getApiErrorMessage } from '../../api/apiError'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 import Pagination from '../../components/Pagination'
 
 const stars = (rating) => '★★★★★☆☆☆☆☆'.slice(5 - rating, 10 - rating)
 
 function AdminReviewModerationPage() {
+  const { user, loading: userLoading } = useCurrentUser()
+  const isAdmin = hasRole(user, 'ROLE_ADMIN')
   const [reviews, setReviews] = useState([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const load = () => {
+  useEffect(() => {
+    if (!isAdmin) return
     setLoading(true)
     setError('')
     getAdminReviews({ page })
@@ -22,9 +26,7 @@ function AdminReviewModerationPage() {
       })
       .catch((requestError) => setError(getApiErrorMessage(requestError, '심사 대기 목록을 불러오지 못했습니다.')))
       .finally(() => setLoading(false))
-  }
-
-  useEffect(load, [page])
+  }, [page, isAdmin])
 
   const decide = async (reviewId, decision) => {
     setError('')
@@ -35,6 +37,9 @@ function AdminReviewModerationPage() {
       setError(getApiErrorMessage(requestError, '심사 처리를 하지 못했습니다.'))
     }
   }
+
+  if (userLoading) return <p className="notice">확인 중입니다.</p>
+  if (!isAdmin) return <section className="page-card"><h1>관리자만 접근할 수 있습니다.</h1></section>
 
   return (
     <>

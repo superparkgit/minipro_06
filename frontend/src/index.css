@@ -101,8 +101,6 @@ button { cursor: pointer; }
   .detail-layout { grid-template-columns: 1fr; }
   .reservation-row { align-items: flex-start; flex-direction: column; }
 }
-<<<<<<< Updated upstream
-=======
 
 /* Post / Comment / Review (community, review) */
 .post-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
@@ -137,4 +135,3 @@ button { cursor: pointer; }
 
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 24px; }
 .pagination-status { color: #6e6e73; font-size: 14px; }
->>>>>>> Stashed changes

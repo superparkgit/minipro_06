@@ -10,6 +10,7 @@ import {
   updateReviewReply,
 } from '../../api/reviewApi'
 import { getApiErrorMessage } from '../../api/apiError'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 import Pagination from '../../components/Pagination'
 
 const formatDate = (value) => value
@@ -20,6 +21,7 @@ const stars = (rating) => '★★★★★☆☆☆☆☆'.slice(5 - rating, 10 
 
 function ProgramReviewsPage() {
   const { programId } = useParams()
+  const { user } = useCurrentUser()
   const [programRating, setProgramRating] = useState(null)
   const [trainerRating, setTrainerRating] = useState(null)
   const [reviews, setReviews] = useState([])
@@ -120,7 +122,11 @@ function ProgramReviewsPage() {
       {!loading && !error && reviews.length === 0 && <p className="page-card">등록된 리뷰가 없습니다.</p>}
 
       <div className="review-list">
-        {reviews.map((review) => (
+        {reviews.map((review) => {
+          const isOwner = user?.id === review.userId
+          const isAssignedTrainer = hasRole(user, 'ROLE_TRAINER') && user?.id === review.trainerId
+
+          return (
           <article className="card review-card" key={review.id}>
             <div className="meta">
               <span className="star-rating">{stars(review.rating)}</span>
@@ -129,14 +135,24 @@ function ProgramReviewsPage() {
             </div>
             <p>{review.content}</p>
 
-            <div className="row-actions">
-              <Link className="button button-secondary" to={`/reviews/${review.id}/edit`} state={{ review }}>수정</Link>
-              <button className="button button-danger" onClick={() => removeReview(review.id)}>삭제</button>
-              <button className="button button-secondary" onClick={() => setOpenReplyId(openReplyId === review.id ? null : review.id)}>
-                {review.reply ? '답변 수정' : '답변 작성'}
-              </button>
-              <button className="button button-danger" onClick={() => setOpenReportId(openReportId === review.id ? null : review.id)}>삭제 요청</button>
-            </div>
+            {(isOwner || isAssignedTrainer) && (
+              <div className="row-actions">
+                {isOwner && (
+                  <>
+                    <Link className="button button-secondary" to={`/reviews/${review.id}/edit`} state={{ review }}>수정</Link>
+                    <button className="button button-danger" onClick={() => removeReview(review.id)}>삭제</button>
+                  </>
+                )}
+                {isAssignedTrainer && (
+                  <>
+                    <button className="button button-secondary" onClick={() => setOpenReplyId(openReplyId === review.id ? null : review.id)}>
+                      {review.reply ? '답변 수정' : '답변 작성'}
+                    </button>
+                    <button className="button button-danger" onClick={() => setOpenReportId(openReportId === review.id ? null : review.id)}>삭제 요청</button>
+                  </>
+                )}
+              </div>
+            )}
 
             {review.reply && (
               <div className="review-reply">
@@ -176,7 +192,8 @@ function ProgramReviewsPage() {
               </div>
             )}
           </article>
-        ))}
+          )
+        })}
       </div>
 
       <Pagination page={page} totalPages={totalPages} onChange={setPage} />

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deletePost, getPost } from '../../api/postApi'
 import { getApiErrorMessage } from '../../api/apiError'
+import { useCurrentUser } from '../../hooks/useCurrentUser'
 import CommentSection from './components/CommentSection'
 
 const categoryLabel = { QUESTION: '질문', NOTICE: '공지' }
@@ -13,6 +14,7 @@ const formatDateTime = (value) => value
 function PostDetailPage() {
   const { postId } = useParams()
   const navigate = useNavigate()
+  const { user } = useCurrentUser()
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -50,8 +52,12 @@ function PostDetailPage() {
         <hr />
         <p className="post-content">{post.content}</p>
         <div className="row-actions">
-          <button className="button button-secondary" onClick={() => navigate(`/posts/${post.id}/edit`, { state: { post } })}>수정</button>
-          <button className="button button-danger" onClick={remove}>삭제</button>
+          {user?.id === post.writerId && (
+            <>
+              <button className="button button-secondary" onClick={() => navigate(`/posts/${post.id}/edit`, { state: { post } })}>수정</button>
+              <button className="button button-danger" onClick={remove}>삭제</button>
+            </>
+          )}
           <Link className="button button-secondary" to="/posts">목록</Link>
         </div>
         {error && <p className="notice notice-error">{error}</p>}

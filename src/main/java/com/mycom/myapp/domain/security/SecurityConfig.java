@@ -71,6 +71,7 @@ public class SecurityConfig {
 														, "/api/auth/logout").permitAll() // 로그아웃
 						
 						// GET /api/posts/{postId} 보다 먼저 선언
+						.requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/posts/me").authenticated()
 						
 						// 공개 조회

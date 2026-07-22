@@ -14,6 +14,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("api/posts")
@@ -35,16 +39,38 @@ public class PostController {
     @PostMapping
     public ResponseEntity<PostResponseDto> createPost(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody PostRequestDto requestDto
+            @Valid @RequestBody PostRequestDto requestDto
     ){
         PostResponseDto response = postService.createPost(userDetails.getUserId(), requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<PostResponseDto> detailPost(@PathVariable Long postId) {
-        PostResponseDto response = postService.getPostById(postId);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<PostResponseDto> detailPost(
+            @PathVariable Long postId,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        
+        boolean shouldIncreaseViewCount = true;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals("viewed_post_" + postId)) {
+                    shouldIncreaseViewCount = false;
+                    break;
+                }
+            }
+        }
+        
+        if (shouldIncreaseViewCount) {
+            Cookie newCookie = new Cookie("viewed_post_" + postId, "true");
+            newCookie.setMaxAge(60 * 60 * 24); // 24 hours
+            newCookie.setPath("/api/posts/" + postId);
+            response.addCookie(newCookie);
+        }
+
+        PostResponseDto responseDto = postService.getPostById(postId, shouldIncreaseViewCount);
+        return ResponseEntity.ok(responseDto);
     }
 
     @GetMapping("/me")
@@ -59,7 +85,7 @@ public class PostController {
     public ResponseEntity<PostResponseDto> updatePost(
             @PathVariable Long postId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody PostRequestDto requestDto) {
+            @Valid @RequestBody PostRequestDto requestDto) {
         PostResponseDto response = postService.updatePost(postId, userDetails.getUserId(), requestDto);
         return ResponseEntity.ok(response);
     }

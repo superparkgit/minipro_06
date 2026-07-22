@@ -9,8 +9,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 
 @RestController
 @RequestMapping("/api")
@@ -23,14 +27,16 @@ public class CommentController {
     public ResponseEntity<CommentResponseDto> createComment(
             @PathVariable Long postId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody CommentRequestDto requestDto) {
+            @Valid @RequestBody CommentRequestDto requestDto) {
         CommentResponseDto response = commentService.createComment(postId, userDetails.getUserId(), requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/posts/{postId}/comments")
-    public ResponseEntity<List<CommentResponseDto>> getComments(@PathVariable Long postId) {
-        List<CommentResponseDto> response = commentService.getCommentsByPost(postId);
+    public ResponseEntity<Page<CommentResponseDto>> getComments(
+            @PathVariable Long postId,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable) {
+        Page<CommentResponseDto> response = commentService.getCommentsByPost(postId, pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -38,7 +44,7 @@ public class CommentController {
     public ResponseEntity<CommentResponseDto> updateComment(
             @PathVariable Long commentId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody CommentRequestDto requestDto) {
+            @Valid @RequestBody CommentRequestDto requestDto) {
         CommentResponseDto response = commentService.updateComment(commentId, userDetails.getUserId(), requestDto);
         return ResponseEntity.ok(response);
     }

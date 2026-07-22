@@ -1,6 +1,6 @@
 package com.mycom.myapp.domain.review.controller;
 
-import com.mycom.myapp.domain.review.Service.ReviewService;
+import com.mycom.myapp.domain.review.service.ReviewService;
 import com.mycom.myapp.domain.review.dto.*;
 import com.mycom.myapp.domain.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api")
@@ -27,7 +28,7 @@ public class ReviewController {
     public ResponseEntity<ReviewResponseDto> createReview(
             @PathVariable Long reservationId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReviewRequestDto requestDto) {
+            @Valid @RequestBody ReviewRequestDto requestDto) {
         ReviewResponseDto response = reviewService.createReview(
                 reservationId, userDetails.getUserId(), requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -40,10 +41,21 @@ public class ReviewController {
     public ResponseEntity<ReviewResponseDto> updateReview(
             @PathVariable Long reviewId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReviewRequestDto requestDto) {
+            @Valid @RequestBody ReviewRequestDto requestDto) {
         ReviewResponseDto response = reviewService.updateReview(
                 reviewId, userDetails.getUserId(), requestDto);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 리뷰 삭제 (작성자 본인)
+     */
+    @DeleteMapping("/reviews/{reviewId}")
+    public ResponseEntity<Void> deleteReview(
+            @PathVariable Long reviewId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        reviewService.deleteReview(reviewId, userDetails.getUserId());
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -64,10 +76,23 @@ public class ReviewController {
     public ResponseEntity<ReviewReplyResponseDto> createReply(
             @PathVariable Long reviewId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReviewReplyRequestDto requestDto) {
+            @Valid @RequestBody ReviewReplyRequestDto requestDto) {
         ReviewReplyResponseDto response = reviewService.createReply(
                 reviewId, userDetails.getUserId(), requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * 트레이너 답변 수정 (작성자 본인)
+     */
+    @PutMapping("/reviews/{reviewId}/replies")
+    public ResponseEntity<ReviewReplyResponseDto> updateReply(
+            @PathVariable Long reviewId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ReviewReplyRequestDto requestDto) {
+        ReviewReplyResponseDto response = reviewService.updateReply(
+                reviewId, userDetails.getUserId(), requestDto);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -77,7 +102,7 @@ public class ReviewController {
     public ResponseEntity<ReviewReportResponseDto> reportReview(
             @PathVariable Long reviewId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReviewReportRequestDto requestDto) {
+            @Valid @RequestBody ReviewReportRequestDto requestDto) {
         ReviewReportResponseDto response = reviewService.reportReview(
                 reviewId, userDetails.getUserId(), requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

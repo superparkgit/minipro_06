@@ -79,7 +79,11 @@ public class Review {
         this.status = ReviewStatus.VISIBLE;
     }
 
-    public void markDeleted() {
-        this.status = ReviewStatus.DELETED;
+    public void markUserDeleted() {
+        this.status = ReviewStatus.USER_DELETED;
+    }
+
+    public void markAdminDeleted() {
+        this.status = ReviewStatus.ADMIN_DELETED;
     }
 }

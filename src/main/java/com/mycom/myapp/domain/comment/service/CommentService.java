@@ -11,10 +11,10 @@ import com.mycom.myapp.domain.post.repository.PostRepository;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -43,10 +43,12 @@ public class CommentService {
         return CommentResponseDto.from(savedComment);
     }
 
-    public List<CommentResponseDto> getCommentsByPost(Long postId) {
-        return commentRepository.findByPostIdOrderByCreatedAtAsc(postId).stream()
-                .map(CommentResponseDto::from)
-                .toList();
+    public Page<CommentResponseDto> getCommentsByPost(Long postId, Pageable pageable) {
+        if (!postRepository.existsById(postId)) {
+            throw new ResourceNotFoundException("게시글", postId);
+        }
+        return commentRepository.findByPostId(postId, pageable)
+                .map(CommentResponseDto::from);
     }
 
     @Transactional

@@ -206,6 +206,22 @@ public class ReviewService {
     }
 
     /**
+     * 트레이너 답변 수정 (작성자 본인만)
+     */
+    @Transactional
+    public ReviewReplyResponseDto updateReply(Long reviewId, Long trainerId, ReviewReplyRequestDto requestDto) {
+        ReviewReply reply = reviewReplyRepository.findByReviewId(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("답변", reviewId));
+
+        if (!reply.getTrainer().getId().equals(trainerId)) {
+            throw new AccessDeniedException("답변 수정 권한이 없습니다.");
+        }
+
+        reply.update(requestDto.getContent());
+        return ReviewReplyResponseDto.from(reply);
+    }
+
+    /**
      * 삭제 요청 (담당 트레이너 → 리뷰 즉시 숨김)
      */
     @Transactional

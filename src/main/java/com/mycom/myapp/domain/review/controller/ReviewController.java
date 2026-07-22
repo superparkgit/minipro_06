@@ -83,6 +83,19 @@ public class ReviewController {
     }
 
     /**
+     * 트레이너 답변 수정 (작성자 본인)
+     */
+    @PutMapping("/reviews/{reviewId}/replies")
+    public ResponseEntity<ReviewReplyResponseDto> updateReply(
+            @PathVariable Long reviewId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ReviewReplyRequestDto requestDto) {
+        ReviewReplyResponseDto response = reviewService.updateReply(
+                reviewId, userDetails.getUserId(), requestDto);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * 삭제 요청 / 신고 (담당 트레이너 본인)
      */
     @PostMapping("/reviews/{reviewId}/reports")

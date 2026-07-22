@@ -5,11 +5,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @Getter
 @NoArgsConstructor
 public class PostRequestDto {
+    @NotNull(message = "카테고리를 선택해주세요.")
     private Category category;
 
     @NotBlank(message = "제목을 입력해주세요.")

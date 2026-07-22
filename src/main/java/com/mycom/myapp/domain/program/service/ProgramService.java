@@ -5,6 +5,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.mycom.myapp.domain.program.dto.ProgramRequest;
 import com.mycom.myapp.domain.program.dto.ProgramResponse;
@@ -16,10 +18,9 @@ import com.mycom.myapp.domain.program.entity.ProgramTrainer.AssignmentRole;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
 import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
 import com.mycom.myapp.domain.user.entity.User;
-import com.mycom.myapp.domain.user.entity.UserRole.RoleName;
+import com.mycom.myapp.domain.user.entity.Role;
+import com.mycom.myapp.domain.user.entity.UserRole;
 import com.mycom.myapp.domain.user.repository.UserRepository;
-import com.mycom.myapp.global.exception.CustomException;
-import com.mycom.myapp.global.exception.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -60,7 +61,7 @@ public class ProgramService {
     @Transactional
     public ProgramResponse createProgram(ProgramRequest request, Long trainerId) {
         User trainer = userRepository.findById(trainerId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> notFound("사용자를 찾을 수 없습니다."));
 
         Program program = Program.builder()
                 .title(request.title())
@@ -116,7 +117,7 @@ public class ProgramService {
         validateMainTrainer(program.getId(), trainerId);
 
         if (program.getStatus() == ProgramStatus.CANCELED) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw badRequest("폐강된 수업은 완료 처리할 수 없습니다.");
         }
         program.complete();
     }
@@ -127,17 +128,18 @@ public class ProgramService {
         validateMainTrainer(programId, requesterId);
 
         if (programTrainerRepository.existsByProgramIdAndTrainerId(programId, targetTrainerId)) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw badRequest("이미 담당 강사로 등록된 사용자입니다.");
         }
 
         User trainer = userRepository.findById(targetTrainerId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> notFound("사용자를 찾을 수 없습니다."));
 
         // 일반 회원(ROLE_USER)이 보조 강사로 등록되지 않도록 역할 확인
-        boolean isTrainer = trainer.getRoles().stream()
-                .anyMatch(role -> role.getRoleName() == RoleName.ROLE_TRAINER);
+        boolean isTrainer = trainer.getUserRoles().stream()
+                .map(UserRole::getRoleName)
+                .anyMatch(role -> role == Role.ROLE_TRAINER);
         if (!isTrainer) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw badRequest("트레이너 역할을 가진 사용자만 보조 강사로 등록할 수 있습니다.");
         }
 
         ProgramTrainer assignment = ProgramTrainer.builder()
@@ -154,22 +156,30 @@ public class ProgramService {
     public void removeAssistant(Long programId, Long targetTrainerId, Long requesterId) {
         validateMainTrainer(programId, requesterId);
         ProgramTrainer assignment = programTrainerRepository.findByProgramIdAndTrainerId(programId, targetTrainerId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> notFound("담당 강사를 찾을 수 없습니다."));
         if (assignment.getAssignmentRole() == AssignmentRole.MAIN) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
+            throw badRequest("MAIN 트레이너는 제거할 수 없습니다.");
         }
         programTrainerRepository.delete(assignment);
     }
 
     private Program findProgramById(Long id) {
         return programRepository.findById(id)
-                .orElseThrow(() -> new CustomException(ErrorCode.CLASS_NOT_FOUND));
+                .orElseThrow(() -> notFound("프로그램을 찾을 수 없습니다."));
     }
 
     private void validateMainTrainer(Long programId, Long trainerId) {
         if (!programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(
                 programId, trainerId, AssignmentRole.MAIN)) {
-            throw new CustomException(ErrorCode.CLASS_ACCESS_DENIED);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "대표 트레이너만 처리할 수 있습니다.");
         }
+    }
+
+    private ResponseStatusException notFound(String message) {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+    }
+
+    private ResponseStatusException badRequest(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 }

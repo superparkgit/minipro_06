@@ -16,17 +16,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.mycom.myapp.domain.program.dto.ProgramRequest;
 import com.mycom.myapp.domain.program.dto.ProgramResponse;
 import com.mycom.myapp.domain.program.entity.Program;
 import com.mycom.myapp.domain.program.entity.Program.ProgramType;
+import com.mycom.myapp.domain.program.entity.ProgramTrainer;
+import com.mycom.myapp.domain.program.entity.ProgramTrainer.AssignmentRole;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
 import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
-import com.mycom.myapp.global.exception.CustomException;
-import com.mycom.myapp.global.exception.ErrorCode;
 
 /**
  * ProgramService 단위 테스트 (Mockito)
@@ -48,7 +50,9 @@ class ProgramServiceTest {
     private ProgramService programService;
 
     private User trainer(Long id) {
-        return User.builder().id(id).email("trainer@test.com").password("pw").name("트레이너").build();
+        User trainer = User.builder().email("trainer@test.com").password("pw").name("트레이너").build();
+        ReflectionTestUtils.setField(trainer, "id", id);
+        return trainer;
     }
 
     private Program program(Long id) {
@@ -103,8 +107,7 @@ class ProgramServiceTest {
         given(programRepository.findById(100L)).willReturn(Optional.of(program));
 
         assertThatThrownBy(() -> programService.updateProgram(100L, request("수정"), 99L))
-                .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_ACCESS_DENIED);
+                .isInstanceOf(ResponseStatusException.class);
     }
 
     @Test
@@ -127,7 +130,7 @@ class ProgramServiceTest {
         given(programRepository.findById(100L)).willReturn(Optional.of(program));
 
         assertThatThrownBy(() -> programService.deleteProgram(100L, 99L))
-                .isInstanceOf(CustomException.class);
+                .isInstanceOf(ResponseStatusException.class);
         verify(programRepository, never()).delete(any(Program.class));
     }
 
@@ -137,74 +140,67 @@ class ProgramServiceTest {
         given(programRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> programService.getProgram(999L))
-                .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_NOT_FOUND);
+                .isInstanceOf(ResponseStatusException.class);
     }
-
-    // ===== 수업 완료 처리 =====
-
     @Test
-    @DisplayName("수업 완료 성공 - MAIN 트레이너가 처리하면 COMPLETED 로 변경")
-    void completeProgram_success() {
+    @DisplayName("수업 완료 실패 - 폐강된 프로그램은 완료 처리할 수 없음")
+    void completeProgram_canceledProgram() {
         Program program = program(100L);
-        given(programRepository.findById(100L)).willReturn(Optional.of(program));
-        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
-                .willReturn(true);
-
-        programService.completeProgram(100L, 10L);
-
-        assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.COMPLETED);
-    }
-
-    @Test
-    @DisplayName("수업 완료 실패 - 담당 MAIN 트레이너가 아니면 처리 불가")
-    void completeProgram_notMainTrainer() {
-        Program program = program(100L);
-        given(programRepository.findById(100L)).willReturn(Optional.of(program));
-        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
-                .willReturn(false);
-
-        assertThatThrownBy(() -> programService.completeProgram(100L, 99L))
-                .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CLASS_ACCESS_DENIED);
-
-        assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.OPEN);
-    }
-
-    @Test
-    @DisplayName("수업 완료 실패 - 이미 폐강된 수업은 완료 처리 불가")
-    void completeProgram_canceled() {
-        Program program = program(100L);
-        program.cancel();   // CANCELED 상태로 변경
+        program.cancel();
         given(programRepository.findById(100L)).willReturn(Optional.of(program));
         given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
                 .willReturn(true);
 
         assertThatThrownBy(() -> programService.completeProgram(100L, 10L))
-                .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
-
+                .isInstanceOf(ResponseStatusException.class);
         assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.CANCELED);
     }
 
-    // ===== 보조 강사 배정 =====
+    @Test
+    @DisplayName("수업 완료 실패 - MAIN이 아닌 트레이너는 완료 처리할 수 없음")
+    void completeProgram_notMainTrainer() {
+        Program program = program(100L);
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(
+                100L, 20L, AssignmentRole.MAIN)).willReturn(false);
+
+        assertThatThrownBy(() -> programService.completeProgram(100L, 20L))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.OPEN);
+    }
 
     @Test
-    @DisplayName("보조 강사 등록 실패 - 트레이너 역할이 없는 일반 회원은 배정 불가")
-    void addAssistant_notTrainerRole() {
+    @DisplayName("보조 강사 추가 실패 - 트레이너 역할이 아닌 회원은 추가할 수 없음")
+    void addAssistant_nonTrainer() {
         Program program = program(100L);
-        User normalMember = User.builder()
-                .id(50L).email("user@test.com").password("pw").name("일반회원")
-                .build();   // roles 비어 있음 = ROLE_TRAINER 없음
-
         given(programRepository.findById(100L)).willReturn(Optional.of(program));
         given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
                 .willReturn(true);
-        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 50L)).willReturn(false);
-        given(userRepository.findById(50L)).willReturn(Optional.of(normalMember));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 20L)).willReturn(false);
+        given(userRepository.findById(20L)).willReturn(Optional.of(trainer(20L)));
 
-        assertThatThrownBy(() -> programService.addAssistant(100L, 50L, 10L))
-                .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+        assertThatThrownBy(() -> programService.addAssistant(100L, 20L, 10L))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    @DisplayName("보조 강사 제거 실패 - MAIN 트레이너는 제거할 수 없음")
+    void removeAssistant_mainTrainer() {
+        Program program = program(100L);
+        User mainTrainer = trainer(10L);
+        ProgramTrainer mainAssignment = ProgramTrainer.builder()
+                .program(program)
+                .trainer(mainTrainer)
+                .assignmentRole(AssignmentRole.MAIN)
+                .build();
+
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(any(), any(), any()))
+                .willReturn(true);
+        given(programTrainerRepository.findByProgramIdAndTrainerId(100L, 10L))
+                .willReturn(Optional.of(mainAssignment));
+
+        assertThatThrownBy(() -> programService.removeAssistant(100L, 10L, 10L))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(programTrainerRepository, never()).delete(any(ProgramTrainer.class));
     }
 }

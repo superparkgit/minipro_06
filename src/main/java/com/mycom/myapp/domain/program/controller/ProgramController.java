@@ -6,7 +6,6 @@ import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +22,7 @@ import com.mycom.myapp.domain.program.dto.ProgramResponse;
 import com.mycom.myapp.domain.program.dto.AddTrainerRequest;
 import com.mycom.myapp.domain.program.entity.Program.ProgramType;
 import com.mycom.myapp.domain.program.service.ProgramService;
+import com.mycom.myapp.domain.security.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,70 +49,63 @@ public class ProgramController {
     }
 
     // 프로그램 등록 (TRAINER)
-    @PreAuthorize("hasRole('TRAINER')")
     @PostMapping
     public ResponseEntity<ProgramResponse> createProgram(
             @Valid @RequestBody ProgramRequest request,
-            @AuthenticationPrincipal Long userId) {
-        ProgramResponse response = programService.createProgram(request, userId);
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        ProgramResponse response = programService.createProgram(request, userDetails.getUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // 프로그램 수정 (TRAINER, 본인)
-    @PreAuthorize("hasRole('TRAINER')")
     @PatchMapping("/{id}")
     public ResponseEntity<ProgramResponse> updateProgram(
             @PathVariable Long id,
             @Valid @RequestBody ProgramRequest request,
-            @AuthenticationPrincipal Long userId) {
-        return ResponseEntity.ok(programService.updateProgram(id, request, userId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(programService.updateProgram(id, request, userDetails.getUserId()));
     }
 
     // 프로그램 삭제 (TRAINER, 본인)
-    @PreAuthorize("hasRole('TRAINER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProgram(
             @PathVariable Long id,
-            @AuthenticationPrincipal Long userId) {
-        programService.deleteProgram(id, userId);
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        programService.deleteProgram(id, userDetails.getUserId());
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('TRAINER')")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<Void> cancelProgram(
             @PathVariable Long id,
-            @AuthenticationPrincipal Long userId) {
-        programService.cancelProgram(id, userId);
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        programService.cancelProgram(id, userDetails.getUserId());
         return ResponseEntity.noContent().build();
     }
 
     // 수업 완료 처리 (MAIN) - COMPLETED가 되어야 출석 처리가 가능하다
-    @PreAuthorize("hasRole('TRAINER')")
     @PatchMapping("/{id}/complete")
     public ResponseEntity<Void> completeProgram(
             @PathVariable Long id,
-            @AuthenticationPrincipal Long userId) {
-        programService.completeProgram(id, userId);
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        programService.completeProgram(id, userDetails.getUserId());
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('TRAINER')")
     @PostMapping("/{id}/trainers")
     public ResponseEntity<ProgramResponse> addAssistant(
             @PathVariable Long id,
             @Valid @RequestBody AddTrainerRequest request,
-            @AuthenticationPrincipal Long userId) {
-        return ResponseEntity.ok(programService.addAssistant(id, request.trainerId(), userId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(programService.addAssistant(id, request.trainerId(), userDetails.getUserId()));
     }
 
-    @PreAuthorize("hasRole('TRAINER')")
     @DeleteMapping("/{id}/trainers/{trainerId}")
     public ResponseEntity<Void> removeAssistant(
             @PathVariable Long id,
             @PathVariable Long trainerId,
-            @AuthenticationPrincipal Long userId) {
-        programService.removeAssistant(id, trainerId, userId);
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        programService.removeAssistant(id, trainerId, userDetails.getUserId());
         return ResponseEntity.noContent().build();
     }
 }

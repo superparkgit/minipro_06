@@ -21,7 +21,7 @@ public class PostResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public static PostResponseDto from(Post post) {
+    public static PostResponseDto from(Post post, long commentCount) {
         return PostResponseDto.builder()
                 .id(post.getId())
                 .writerId(post.getWriter().getId())
@@ -30,7 +30,7 @@ public class PostResponseDto {
                 .title(post.getTitle())
                 .content(post.getContent())
                 .viewCount(post.getViewCount())
-                .commentCount(post.getComments().size())
+                .commentCount((int) commentCount)
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .build();

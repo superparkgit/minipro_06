@@ -1,5 +1,6 @@
 package com.mycom.myapp.domain.post.service;
 
+import com.mycom.myapp.domain.comment.repository.CommentRepository;
 import com.mycom.myapp.domain.global.exception.AccessDeniedException;
 import com.mycom.myapp.domain.global.exception.ResourceNotFoundException;
 import com.mycom.myapp.domain.post.dto.PostRequestDto;
@@ -16,6 +17,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -23,6 +28,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
 
     public Page<PostResponseDto> getPosts(Category category, String keyword, Pageable pageable) {
         Page<Post> posts;
@@ -40,7 +46,8 @@ public class PostService {
             posts = postRepository.findAll(pageable);
         }
 
-        return posts.map(PostResponseDto::from);
+        Map<Long, Long> commentCounts = getCommentCounts(posts.getContent());
+        return posts.map(post -> PostResponseDto.from(post, commentCounts.getOrDefault(post.getId(), 0L)));
     }
 
     @Transactional
@@ -58,24 +65,25 @@ public class PostService {
                 .build();
 
         Post savedPost = postRepository.save(post);
-        return PostResponseDto.from(savedPost);
+        return PostResponseDto.from(savedPost, 0L);
     }
 
     @Transactional
     public PostResponseDto getPostById(Long postId, boolean shouldIncreaseViewCount) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("게시글", postId));
-        
+
         if (shouldIncreaseViewCount) {
             post.incrementViewCount();
         }
-        
-        return PostResponseDto.from(post);
+
+        return PostResponseDto.from(post, commentRepository.countByPostId(postId));
     }
 
     public Page<PostResponseDto> getPostsByWriter(Long writerId, Pageable pageable) {
-        return postRepository.findByWriterId(writerId, pageable)
-                .map(PostResponseDto::from);
+        Page<Post> posts = postRepository.findByWriterId(writerId, pageable);
+        Map<Long, Long> commentCounts = getCommentCounts(posts.getContent());
+        return posts.map(post -> PostResponseDto.from(post, commentCounts.getOrDefault(post.getId(), 0L)));
     }
 
     @Transactional
@@ -90,7 +98,16 @@ public class PostService {
         validateNoticePermission(requestDto.getCategory(), post.getWriter());
 
         post.update(requestDto.getTitle(), requestDto.getContent(), requestDto.getCategory());
-        return PostResponseDto.from(post);
+        return PostResponseDto.from(post, commentRepository.countByPostId(postId));
+    }
+
+    private Map<Long, Long> getCommentCounts(List<Post> posts) {
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        Map<Long, Long> commentCounts = new HashMap<>();
+        for (Object[] row : commentRepository.countByPostIdIn(postIds)) {
+            commentCounts.put((Long) row[0], (Long) row[1]);
+        }
+        return commentCounts;
     }
 
     private void validateNoticePermission(Category category, User user) {

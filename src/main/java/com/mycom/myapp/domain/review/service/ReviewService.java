@@ -1,4 +1,4 @@
-package com.mycom.myapp.domain.review.Service;
+package com.mycom.myapp.domain.review.service;
 
 import com.mycom.myapp.domain.global.exception.AccessDeniedException;
 import com.mycom.myapp.domain.global.exception.BusinessRuleException;
@@ -24,6 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -56,16 +60,19 @@ public class ReviewService {
             throw new BusinessRuleException("참여 완료된 예약만 리뷰를 작성할 수 있습니다.");
         }
 
-        if (reviewRepository.existsByReservationId(reservationId)) {
+        // USER_DELETED(작성자 직접 삭제)인 경우 재작성 허용, 그 외 상태는 중복으로 간주
+        if (reviewRepository.existsByReservationIdAndStatusNot(reservationId, ReviewStatus.USER_DELETED)) {
             throw new BusinessRuleException("이미 리뷰를 작성한 예약입니다.");
         }
+
+        Program program = reservation.getProgram();
+        validateReviewPeriod(program);
 
         int rating = requestDto.getRating();
         if (rating < 1 || rating > 5) {
             throw new BusinessRuleException("평점은 1~5 사이여야 합니다.");
         }
 
-        Program program = reservation.getProgram();
         User user = reservation.getUser();
         User trainer = programTrainerRepository
                 .findByProgramIdAndAssignmentRole(program.getId(), ProgramTrainer.AssignmentRole.MAIN)
@@ -100,6 +107,8 @@ public class ReviewService {
             throw new BusinessRuleException("수정할 수 없는 상태의 리뷰입니다.");
         }
 
+        validateReviewPeriod(review.getProgram());
+
         int rating = requestDto.getRating();
         if (rating < 1 || rating > 5) {
             throw new BusinessRuleException("평점은 1~5 사이여야 합니다.");
@@ -110,16 +119,55 @@ public class ReviewService {
     }
 
     /**
+     * 리뷰 삭제 (작성자 본인만)
+     * - USER_DELETED 처리 → 재작성 가능
+     * - ADMIN_DELETED(관리자 삭제)된 리뷰는 작성자도 조작 불가
+     */
+    @Transactional
+    public void deleteReview(Long reviewId, Long userId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("리뷰", reviewId));
+
+        if (!review.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("리뷰 삭제 권한이 없습니다.");
+        }
+
+        if (review.getStatus() == ReviewStatus.USER_DELETED) {
+            throw new BusinessRuleException("이미 삭제된 리뷰입니다.");
+        }
+
+        if (review.getStatus() == ReviewStatus.ADMIN_DELETED) {
+            throw new BusinessRuleException("관리자에 의해 삭제된 리뷰는 수정하거나 삭제할 수 없습니다.");
+        }
+
+        review.markUserDeleted();
+    }
+
+    /**
+     * 리뷰 작성/수정 기한 검증 (프로그램 종료일로부터 30일 이내)
+     */
+    private void validateReviewPeriod(Program program) {
+        if (LocalDateTime.now().isAfter(program.getEndAt().plusDays(30))) {
+            throw new BusinessRuleException("프로그램 종료일로부터 30일 이내에만 리뷰를 작성 및 수정할 수 있습니다.");
+        }
+    }
+
+    /**
      * 프로그램별 리뷰 목록 (VISIBLE만, 공개)
      */
     public Page<ReviewResponseDto> getReviewsByProgram(Long programId, Pageable pageable) {
-        return reviewRepository.findByProgramIdAndStatus(programId, ReviewStatus.VISIBLE, pageable)
-                .map(review -> {
-                    ReviewReplyResponseDto replyDto = reviewReplyRepository.findByReviewId(review.getId())
-                            .map(ReviewReplyResponseDto::from)
-                            .orElse(null);
-                    return ReviewResponseDto.from(review, replyDto);
-                });
+        Page<Review> reviews = reviewRepository.findByProgramIdAndStatus(programId, ReviewStatus.VISIBLE, pageable);
+        
+        List<Long> reviewIds = reviews.stream().map(Review::getId).toList();
+        List<ReviewReply> replies = reviewReplyRepository.findByReviewIdIn(reviewIds);
+        Map<Long, ReviewReply> replyMap = replies.stream()
+                .collect(Collectors.toMap(r -> r.getReview().getId(), r -> r));
+        
+        return reviews.map(review -> {
+            ReviewReply reply = replyMap.get(review.getId());
+            ReviewReplyResponseDto replyDto = reply != null ? ReviewReplyResponseDto.from(reply) : null;
+            return ReviewResponseDto.from(review, replyDto);
+        });
     }
 
     /**
@@ -155,6 +203,22 @@ public class ReviewService {
                 .build();
 
         return ReviewReplyResponseDto.from(reviewReplyRepository.save(reply));
+    }
+
+    /**
+     * 트레이너 답변 수정 (작성자 본인만)
+     */
+    @Transactional
+    public ReviewReplyResponseDto updateReply(Long reviewId, Long trainerId, ReviewReplyRequestDto requestDto) {
+        ReviewReply reply = reviewReplyRepository.findByReviewId(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("답변", reviewId));
+
+        if (!reply.getTrainer().getId().equals(trainerId)) {
+            throw new AccessDeniedException("답변 수정 권한이 없습니다.");
+        }
+
+        reply.update(requestDto.getContent());
+        return ReviewReplyResponseDto.from(reply);
     }
 
     /**
@@ -227,7 +291,7 @@ public class ReviewService {
 
         if (decision == ReportStatus.APPROVED) {
             report.approve();
-            review.markDeleted();
+            review.markAdminDeleted(); // 신고 승인 → 관리자 삭제
         } else if (decision == ReportStatus.REJECTED) {
             report.reject();
             review.restore();

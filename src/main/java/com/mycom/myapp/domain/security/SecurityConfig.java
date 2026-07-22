@@ -55,6 +55,8 @@ public class SecurityConfig {
 				// 로그인 상태를 Session에 저장 X
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(request -> request
+						
+						// 전체 공개
 						.requestMatchers(
 								"/",
 								"/index.html",
@@ -62,49 +64,84 @@ public class SecurityConfig {
 								"/.well-known/**"
 								).permitAll()
 						
-						// Auth
+						// Auth 전체 공개
 						.requestMatchers(HttpMethod.POST, "/api/auth/signup" // 회원가입
 														, "/api/auth/login" // 로그인
 														, "/api/auth/refresh" // 로큰 재발급
 														, "/api/auth/logout").permitAll() // 로그아웃
 						
-						// Program
-						.requestMatchers(HttpMethod.POST, "/api/programs" // 프로그램 등록
-														, "/api/programs/*/trainers").hasRole("TRAINER") // 보조 강사 추가
-						.requestMatchers(HttpMethod.PATCH, "/api/programs/*" // 프로그램 수정
-										 				 , "/api/programs/*/close" // 모집 마감
-										 				 , "/api/programs/*/open" // 모집 재개
-										 				 , "/api/programs/*/cancel" // 폐강
-										 				 , "/api/programs/*/complete").hasRole("TRAINER") // 수업 완료
-						.requestMatchers(HttpMethod.DELETE, "/api/programs/*/trainers/*").hasRole("TRAINER") // 보조 강사 제거
+						// GET /api/posts/{postId} 보다 먼저 선언
+						.requestMatchers(HttpMethod.GET, "/api/posts/me").authenticated()
 						
-						// Reservation
-						.requestMatchers(HttpMethod.POST, "/api/reservations").authenticated() // 예약 신청
-						.requestMatchers(HttpMethod.PATCH, "/api/reservations/*/approve" // 예약 승인
-														 , "/api/reservations/*/reject" // 예약 거절
-														 , "/api/reservations/*/attendance").hasRole("TRAINER") // 출석, 결석 처리
+						// 공개 조회
+						.requestMatchers(HttpMethod.GET, 
+								// Program
+								"/api/programs",
+								"/api/programs/*",
+								
+								// Post
+								"/api/posts",
+								"/api/posts/*",
+								
+								// Comment
+								"/api/posts/*/comments",
+								
+								// Review / Rating
+								"/api/programs/*/reviews",
+								"/api/trainers/*/rating",
+								"/api/programs/*/rating"
+								).permitAll()
+						
+						// Program : ROLE_TRAINER
+						.requestMatchers(HttpMethod.POST, "/api/programs"
+														, "/api/programs/*/trainers").hasRole("TRAINER")
+						
+						.requestMatchers(HttpMethod.PATCH, "/api/programs/*"
+														 , "/api/programs/*/close"
+														 , "/api/programs/*/open"
+														 , "/api/programs/*/cancel"
+														 , "/api/programs/*/complete").hasRole("TRAINER")
+						
+						.requestMatchers(HttpMethod.DELETE, "/api/programs/*"
+														  , "/api/programs/*/trainers/*").hasRole("TRAINER")
+						
+						// Reservation : 로그인 사용자
+						.requestMatchers(HttpMethod.POST, "/api/reservations").authenticated()
+						
+						// Reservation : 담당 트레이너
+						.requestMatchers(HttpMethod.PATCH, "/api/reservations/*/approve"
+													     , "/api/reservations/*/reject"
+													     , "/api/reservations/*/attendance").hasRole("TRAINER")
+						
+						// Post / Comment : 로그인 사용자
+						.requestMatchers(HttpMethod.POST, "/api/posts"
+														, "/api/posts/*/comments").authenticated()
+						
+						.requestMatchers(HttpMethod.PUT, "/api/posts/*"
+													   , "/api/comments/*").authenticated()
+						
+						.requestMatchers(HttpMethod.DELETE, "/api/posts/*"
+														  , "/api/comments/*").authenticated()
+						
 						// Review
-						.requestMatchers(HttpMethod.GET, "/api/reviews").permitAll() // 리뷰 목록, 평점 조회
-						.requestMatchers(HttpMethod.POST, "/api/reviews").authenticated() // 리뷰 작성
-						.requestMatchers(HttpMethod.POST, "/api/reviews/*/reply" // 리뷰 답변
-														, "/api/reviews/*/reports").hasRole("TRAINER") // 리뷰 신고, 숨김
-						.requestMatchers(HttpMethod.PATCH, "/api/reviews/*").authenticated() // 리뷰 수정
-							.requestMatchers(HttpMethod.DELETE, "/api/reviews/*").authenticated() // 리뷰 삭제
+							// 예약자 본인 
+						.requestMatchers(HttpMethod.POST, "/api/reservations/*/reviews").authenticated()
 						
-						// Board
-						.requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
+							// 작성자 본인
+						.requestMatchers(HttpMethod.PUT, "/api/reviews/*").authenticated()
+						
+							// 담당 트레이너
+						.requestMatchers(HttpMethod.POST, "/api/reviews/*/replies"
+														, "/api/reviews/*/reports").hasRole("TRAINER")
+						
+							// 담당 트레이너 (답변 수정)
+						.requestMatchers(HttpMethod.PUT, "/api/reviews/*/replies").hasRole("TRAINER")
 
-						.requestMatchers(HttpMethod.POST,"/api/posts").hasAnyRole("USER", "TRAINER", "ADMIN")
-
-						// 작성자 여부는 PostService에서 확인
-						.requestMatchers(HttpMethod.PUT, "/api/posts/*").authenticated()
-
-						.requestMatchers(HttpMethod.DELETE, "/api/posts/*").authenticated()
-							
-						// ADMIN
+						// Admin
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")
-						
-						.anyRequest().authenticated() // 위에서 정의하지 않은 요청은 로그인이 필요.
+
+//						.anyRequest().authenticated() // 위에서 정의하지 않은 요청은 로그인이 필요.
+						.anyRequest().denyAll() // 등록하지 않은 API 기본 차단
 						)
 				// 로그인 처리 -> 
 				// 로그인 된 사용자 판별 ( token 검증 ) 이 실패한 경우

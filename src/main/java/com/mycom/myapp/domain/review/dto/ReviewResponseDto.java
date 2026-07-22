@@ -14,7 +14,9 @@ public class ReviewResponseDto {
     private Long reservationId;
     private Long programId;
     private String programTitle;
+    private Long userId;
     private String userName;
+    private Long trainerId;
     private String trainerName;
     private int rating;
     private String content;
@@ -29,7 +31,9 @@ public class ReviewResponseDto {
                 .reservationId(review.getReservation().getId())
                 .programId(review.getProgram().getId())
                 .programTitle(review.getProgram().getTitle())
+                .userId(review.getUser().getId())
                 .userName(review.getUser().getName())
+                .trainerId(review.getTrainer().getId())
                 .trainerName(review.getTrainer().getName())
                 .rating(review.getRating())
                 .content(review.getContent())
@@ -45,7 +49,9 @@ public class ReviewResponseDto {
                 .reservationId(review.getReservation().getId())
                 .programId(review.getProgram().getId())
                 .programTitle(review.getProgram().getTitle())
+                .userId(review.getUser().getId())
                 .userName(review.getUser().getName())
+                .trainerId(review.getTrainer().getId())
                 .trainerName(review.getTrainer().getName())
                 .rating(review.getRating())
                 .content(review.getContent())

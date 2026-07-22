@@ -58,4 +58,17 @@ public class User {
         this.name = name;
         this.userRoles = userRoles == null ? new HashSet<>() : new HashSet<>(userRoles);
     }
+    
+    /**
+     * 사용자가 가진 역할을 변경
+     * 	요청 예시
+     *  {
+     *	  "roles": ["ROLE_USER", "ROLE_TRAINER"]
+	 *	}
+     * @param newRoles 새로 적용할 UserRole 엔티티
+     */
+    public void changeRoles(Set<UserRole> newRoles) {
+    	this.userRoles.clear();
+    	this.userRoles.addAll(newRoles);
+    }
 }

@@ -1,5 +1,6 @@
 package com.mycom.myapp.domain.post.service;
 
+import com.mycom.myapp.domain.comment.repository.CommentRepository;
 import com.mycom.myapp.domain.global.exception.AccessDeniedException;
 import com.mycom.myapp.domain.global.exception.ResourceNotFoundException;
 import com.mycom.myapp.domain.post.dto.PostRequestDto;
@@ -7,6 +8,7 @@ import com.mycom.myapp.domain.post.dto.PostResponseDto;
 import com.mycom.myapp.domain.post.entity.Category;
 import com.mycom.myapp.domain.post.entity.Post;
 import com.mycom.myapp.domain.post.repository.PostRepository;
+import com.mycom.myapp.domain.user.entity.Role;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -22,6 +28,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
 
     public Page<PostResponseDto> getPosts(Category category, String keyword, Pageable pageable) {
         Page<Post> posts;
@@ -39,13 +46,16 @@ public class PostService {
             posts = postRepository.findAll(pageable);
         }
 
-        return posts.map(PostResponseDto::from);
+        Map<Long, Long> commentCounts = getCommentCounts(posts.getContent());
+        return posts.map(post -> PostResponseDto.from(post, commentCounts.getOrDefault(post.getId(), 0L)));
     }
 
     @Transactional
     public PostResponseDto createPost(Long writerId, PostRequestDto requestDto) {
         User writer = userRepository.findById(writerId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자", writerId));
+
+        validateNoticePermission(requestDto.getCategory(), writer);
 
         Post post = Post.builder()
                 .writer(writer)
@@ -55,18 +65,25 @@ public class PostService {
                 .build();
 
         Post savedPost = postRepository.save(post);
-        return PostResponseDto.from(savedPost);
+        return PostResponseDto.from(savedPost, 0L);
     }
 
-    public PostResponseDto getPostById(Long postId) {
+    @Transactional
+    public PostResponseDto getPostById(Long postId, boolean shouldIncreaseViewCount) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("게시글", postId));
-        return PostResponseDto.from(post);
+
+        if (shouldIncreaseViewCount) {
+            post.incrementViewCount();
+        }
+
+        return PostResponseDto.from(post, commentRepository.countByPostId(postId));
     }
 
     public Page<PostResponseDto> getPostsByWriter(Long writerId, Pageable pageable) {
-        return postRepository.findByWriterId(writerId, pageable)
-                .map(PostResponseDto::from);
+        Page<Post> posts = postRepository.findByWriterId(writerId, pageable);
+        Map<Long, Long> commentCounts = getCommentCounts(posts.getContent());
+        return posts.map(post -> PostResponseDto.from(post, commentCounts.getOrDefault(post.getId(), 0L)));
     }
 
     @Transactional
@@ -78,8 +95,29 @@ public class PostService {
             throw new AccessDeniedException("게시글 수정 권한이 없습니다.");
         }
 
+        validateNoticePermission(requestDto.getCategory(), post.getWriter());
+
         post.update(requestDto.getTitle(), requestDto.getContent(), requestDto.getCategory());
-        return PostResponseDto.from(post);
+        return PostResponseDto.from(post, commentRepository.countByPostId(postId));
+    }
+
+    private Map<Long, Long> getCommentCounts(List<Post> posts) {
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        Map<Long, Long> commentCounts = new HashMap<>();
+        for (Object[] row : commentRepository.countByPostIdIn(postIds)) {
+            commentCounts.put((Long) row[0], (Long) row[1]);
+        }
+        return commentCounts;
+    }
+
+    private void validateNoticePermission(Category category, User user) {
+        if (category == Category.NOTICE) {
+            boolean isAdmin = user.getUserRoles().stream()
+                    .anyMatch(r -> r.getRoleName() == Role.ROLE_ADMIN);
+            if (!isAdmin) {
+                throw new AccessDeniedException("공지사항은 관리자만 작성할 수 있습니다.");
+            }
+        }
     }
 
     @Transactional
@@ -91,6 +129,7 @@ public class PostService {
             throw new AccessDeniedException("게시글 삭제 권한이 없습니다.");
         }
 
+        commentRepository.deleteByPostId(postId);
         postRepository.delete(post);
     }
 }

@@ -2,22 +2,57 @@ import { useEffect, useState } from 'react'
 import { cancelReservation, getMyReservations } from '../../api/reservationApi'
 import { getApiErrorMessage } from '../../api/apiError'
 
+const sampleReservations = [
+  { id: 1, programName: '초급 웨이트 트레이닝', status: 'APPROVED', attendanceStatus: 'NOT_CHECKED' },
+  { id: 2, programName: '모닝 요가', status: 'PENDING', attendanceStatus: 'NOT_CHECKED' },
+  { id: 3, programName: '코어 강화 클래스', status: 'APPROVED', attendanceStatus: 'ATTENDED' },
+]
+
+const readDemoReservations = () => {
+  try { return JSON.parse(localStorage.getItem('demoReservations') ?? '[]') }
+  catch { return [] }
+}
+
+const readUpdates = () => {
+  try { return JSON.parse(localStorage.getItem('demoReservationUpdates') ?? '{}') }
+  catch { return {} }
+}
+
+const applyUpdates = (items) => {
+  const updates = readUpdates()
+  return items.map((item) => ({ ...item, ...updates[item.id] }))
+}
+
 function MyReservationsPage() {
   const [reservations, setReservations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (localStorage.getItem('accessToken') === 'demo-access-token') {
+      setReservations(applyUpdates([...readDemoReservations(), ...sampleReservations]))
+      setLoading(false)
+      return
+    }
     getMyReservations()
       .then(({ data }) => setReservations(data))
-      .catch((requestError) => setError(getApiErrorMessage(requestError, '예약 목록을 불러오지 못했습니다.')))
+      .catch(() => setReservations(sampleReservations))
       .finally(() => setLoading(false))
   }, [])
 
   const cancel = async (reservationId) => {
+    if (!window.confirm('이 예약을 취소할까요? 취소 후에는 원래 상태로 되돌릴 수 없습니다.')) return
     setError('')
     try {
-      await cancelReservation(reservationId)
+      if (localStorage.getItem('accessToken') === 'demo-access-token') {
+        const saved = readDemoReservations().map((item) => item.id === reservationId ? { ...item, status: 'CANCELED' } : item)
+        localStorage.setItem('demoReservations', JSON.stringify(saved))
+        const updates = readUpdates()
+        updates[reservationId] = { ...updates[reservationId], status: 'CANCELED' }
+        localStorage.setItem('demoReservationUpdates', JSON.stringify(updates))
+      } else {
+        await cancelReservation(reservationId)
+      }
       setReservations((items) => items.map((item) => item.id === reservationId ? { ...item, status: 'CANCELED' } : item))
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, '예약을 취소하지 못했습니다.'))

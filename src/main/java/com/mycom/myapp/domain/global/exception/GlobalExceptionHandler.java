@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.mycom.myapp.domain.auth.exception.DuplicateEmailException;
+import com.mycom.myapp.domain.auth.exception.InvalidRefreshTokenException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -40,6 +41,12 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, message);
     }
 
+    
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidRefreshToken(InvalidRefreshTokenException exception) {
+        return response(HttpStatus.UNAUTHORIZED, exception.getMessage());
+    }
+    
     private ResponseEntity<ApiErrorResponse> response(HttpStatus status, String message) {
         return ResponseEntity.status(status)
                 .body(new ApiErrorResponse(status.value(), status.name(), message));

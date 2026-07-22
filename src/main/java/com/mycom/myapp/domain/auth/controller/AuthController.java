@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mycom.myapp.domain.auth.dto.AccessTokenResponse;
 import com.mycom.myapp.domain.auth.dto.LoginRequest;
+import com.mycom.myapp.domain.auth.dto.RefreshTokenRequest;
 import com.mycom.myapp.domain.auth.dto.SignupRequest;
 import com.mycom.myapp.domain.auth.dto.SignupResponse;
 import com.mycom.myapp.domain.auth.dto.TokenResponse;
@@ -39,4 +41,22 @@ public class AuthController {
 		TokenResponse tokenResponse = authService.login(request);
 		return ResponseEntity.ok(tokenResponse);
 	}
+	
+	/**
+	 * Refresh Token을 이용한 Access Token 재발급
+	 */
+	@PostMapping("/refresh")
+	public ResponseEntity<AccessTokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request){
+		AccessTokenResponse accessTokenResponse = authService.refresh(request);
+		return ResponseEntity.ok(accessTokenResponse);
+	}
+	/**
+	 * Refresh Token 삭제하며 로그아웃
+	 */
+	@PostMapping("/logout")
+	public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request){
+		authService.logout(request);
+		return ResponseEntity.noContent().build();
+	}
+	
 }

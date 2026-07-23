@@ -4,6 +4,7 @@ import { getAdminUsers, updateUserRoles } from '../../api/adminUserApi'
 import { getApiErrorMessage } from '../../api/apiError'
 import { USER_ROLES } from '../../auth/authStorage'
 import useAuthState from '../../auth/useAuthState'
+import AdminSectionNav from './AdminSectionNav'
 import './AdminUsersPage.css'
 
 const ROLE_OPTIONS = [
@@ -167,6 +168,8 @@ function AdminUsersPage() {
 
   return (
     <section className="admin-users-page" aria-labelledby="admin-users-title">
+      <AdminSectionNav />
+
       <header className="admin-page-heading">
         <div>
           <p className="admin-eyebrow">MEMBER ADMINISTRATION</p>

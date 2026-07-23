@@ -26,9 +26,15 @@ button { cursor: pointer; }
 }
 
 .brand { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
-.app-header nav { display: flex; gap: 20px; font-size: 13px; }
+.app-header nav { display: flex; align-items: center; gap: 20px; font-size: 13px; }
 .app-header nav a { color: rgba(255,255,255,0.82); }
 .app-header nav a:hover, .app-header nav a.active { color: #fff; }
+.header-auth { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.header-user-name { overflow: hidden; max-width: 120px; color: #fff; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.header-auth-button { padding: 0; border: 0; background: transparent; color: rgba(255,255,255,0.82); font-size: inherit; }
+.header-auth-button:hover:not(:disabled) { color: #fff; }
+.header-auth-button:focus-visible { outline: 2px solid #fff; outline-offset: 4px; border-radius: 2px; }
+.header-auth-button:disabled { cursor: wait; opacity: 0.6; }
 .app-main { max-width: 1120px; margin: 0 auto; padding: 48px 24px 72px; }
 
 .hero { padding: 60px 24px; text-align: center; }
@@ -96,6 +102,7 @@ button { cursor: pointer; }
 @media (max-width: 700px) {
   .app-header { padding: 0 16px; }
   .app-header nav { gap: 12px; font-size: 12px; }
+  .header-user-name { max-width: 80px; }
   .app-main { padding: 28px 16px 48px; }
   .hero { padding: 38px 0; }
   .detail-layout { grid-template-columns: 1fr; }

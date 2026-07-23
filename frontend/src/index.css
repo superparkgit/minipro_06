@@ -101,3 +101,37 @@ button { cursor: pointer; }
   .detail-layout { grid-template-columns: 1fr; }
   .reservation-row { align-items: flex-start; flex-direction: column; }
 }
+
+/* Post / Comment / Review (community, review) */
+.post-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.post-tabs { display: flex; gap: 6px; }
+.tab { min-height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: #fff; color: #515154; font-weight: 600; }
+.tab.active { color: #fff; background: #0071e3; }
+.tab:disabled { opacity: 0.5; }
+.post-search { display: flex; gap: 8px; }
+.post-search input { padding: 9px 14px; border: 1px solid #d2d2d7; border-radius: 999px; min-width: 220px; }
+.post-mine-toggle { display: flex; align-items: center; gap: 6px; color: #424245; font-size: 14px; }
+.post-list { display: grid; gap: 12px; }
+.post-row { display: block; }
+.post-row h2 { margin: 8px 0 6px; font-size: 20px; }
+.post-detail h1 { margin: 12px 0; }
+.post-content { white-space: pre-wrap; line-height: 1.7; }
+
+.comment-section { margin-top: 24px; padding: 24px; border-radius: 22px; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.comment-form textarea, .comment-edit textarea { width: 100%; padding: 12px 14px; border: 1px solid #d2d2d7; border-radius: 12px; resize: vertical; }
+.comment-list { display: grid; gap: 14px; margin: 16px 0 0; padding: 0; list-style: none; }
+.comment-item { padding: 14px 0; border-top: 1px solid #f0f0f2; }
+.comment-item .meta { justify-content: flex-start; gap: 10px; margin-bottom: 6px; }
+.comment-edit { display: grid; gap: 8px; margin-top: 8px; }
+
+.rating-summary-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 20px; }
+.review-list { display: grid; gap: 14px; }
+.review-card .meta { margin-bottom: 8px; }
+.review-reply { margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: #f5f5f7; }
+.star-rating { color: #ff9f0a; letter-spacing: 1px; }
+.rating-input { display: flex; gap: 4px; }
+.star-button { width: 36px; height: 36px; border: 0; border-radius: 10px; background: #f5f5f7; color: #d2d2d7; font-size: 18px; }
+.star-button.active { color: #ff9f0a; background: #fff4e5; }
+
+.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 24px; }
+.pagination-status { color: #6e6e73; font-size: 14px; }

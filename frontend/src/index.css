@@ -1,0 +1,110 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+  color: #1d1d1f;
+  background: #f5f5f7;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 max(24px, calc((100vw - 1120px) / 2));
+  color: #f5f5f7;
+  background: rgba(29, 29, 31, 0.92);
+  backdrop-filter: blur(18px);
+}
+
+.brand { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
+.app-header nav { display: flex; align-items: center; gap: 20px; font-size: 13px; }
+.app-header nav a { color: rgba(255,255,255,0.82); }
+.app-header nav a:hover, .app-header nav a.active { color: #fff; }
+.header-auth { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.header-user-name { overflow: hidden; max-width: 120px; color: #fff; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.header-auth-button { padding: 0; border: 0; background: transparent; color: rgba(255,255,255,0.82); font-size: inherit; }
+.header-auth-button:hover:not(:disabled) { color: #fff; }
+.header-auth-button:focus-visible { outline: 2px solid #fff; outline-offset: 4px; border-radius: 2px; }
+.header-auth-button:disabled { cursor: wait; opacity: 0.6; }
+.app-main { max-width: 1120px; margin: 0 auto; padding: 48px 24px 72px; }
+
+.hero { padding: 60px 24px; text-align: center; }
+.eyebrow { margin: 0 0 10px; color: #6e6e73; font-size: 17px; font-weight: 600; }
+.hero h1 { max-width: 720px; margin: 0 auto; font-size: clamp(40px, 7vw, 72px); line-height: 1.06; letter-spacing: -0.055em; }
+.hero p { max-width: 600px; margin: 20px auto 0; color: #6e6e73; font-size: 21px; line-height: 1.45; }
+
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 36px 0 20px; }
+.section-heading h1, .section-heading h2 { margin: 0; font-size: clamp(30px, 4vw, 42px); letter-spacing: -0.045em; }
+.section-heading p { margin: 6px 0 0; color: #6e6e73; }
+
+.grid { display: grid; gap: 18px; }
+.program-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.card { overflow: hidden; padding: 24px; border-radius: 22px; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.program-card { display: flex; min-height: 270px; flex-direction: column; justify-content: space-between; }
+.program-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.1); transition: 0.2s ease; }
+.program-icon { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 16px; font-size: 27px; background: linear-gradient(145deg, #eaf3ff, #dbeafe); }
+.program-card h2 { margin: 18px 0 8px; font-size: 26px; letter-spacing: -0.04em; }
+.program-card p, .muted { color: #6e6e73; line-height: 1.5; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; color: #515154; font-size: 14px; }
+
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 18px; border: 0; border-radius: 999px; font-weight: 600; transition: 0.2s ease; }
+.button-primary { color: #fff; background: #0071e3; }
+.button-primary:hover { background: #0077ed; }
+.button-secondary { color: #0071e3; background: #e8f2ff; }
+.button-danger { color: #d70015; background: #fff0f1; }
+.button:disabled { cursor: default; opacity: 0.55; }
+
+.badge { display: inline-flex; width: fit-content; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; color: #0066cc; background: #e8f2ff; font-size: 12px; font-weight: 700; }
+.badge.pending { color: #9a6700; background: #fff4ce; }
+.badge.approved { color: #137333; background: #e6f4ea; }
+.badge.completed { color: #5b3cc4; background: #f0edff; }
+
+.detail-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr); gap: 20px; }
+.detail-card h1 { margin: 14px 0 12px; font-size: 44px; letter-spacing: -0.05em; }
+.detail-card p { line-height: 1.6; }
+.booking-card { align-self: start; }
+.booking-card h2 { margin-top: 0; font-size: 24px; }
+.booking-card dl { display: grid; grid-template-columns: 90px 1fr; gap: 12px; margin: 20px 0; color: #6e6e73; }
+.booking-card dd { margin: 0; color: #1d1d1f; font-weight: 600; }
+
+.form-card { max-width: 720px; }
+.form-grid { display: grid; gap: 16px; }
+.form-grid label { display: grid; gap: 7px; color: #424245; font-size: 14px; font-weight: 600; }
+.form-grid input, .form-grid select, .form-grid textarea { width: 100%; padding: 13px 14px; border: 1px solid #d2d2d7; border-radius: 12px; background: #fff; color: #1d1d1f; outline: none; }
+.form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus { border-color: #0071e3; box-shadow: 0 0 0 4px rgba(0,113,227,0.14); }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+
+.reservation-list { display: grid; gap: 12px; }
+.manage-grid, .stats-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-bottom: 20px; }
+.assistant-card { margin-top: 20px; }
+.stat-card h2 { margin: 8px 0; font-size: 30px; letter-spacing: -0.04em; }
+.api-note { margin: 18px 0 0; color: #6e6e73; font-size: 13px; }
+.reservation-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 22px; border-radius: 18px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.reservation-row h3 { margin: 0 0 5px; font-size: 18px; }
+.reservation-row p { margin: 0; color: #6e6e73; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.notice { margin-top: 16px; padding: 14px 16px; border-radius: 12px; color: #137333; background: #e6f4ea; }
+.notice-error { color: #b42318; background: #fff0f1; }
+
+.page-card { padding: 28px; border-radius: 22px; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.page-card h1 { margin-top: 0; }
+.page-card code { padding: 3px 6px; border-radius: 5px; background: #f5f5f7; }
+
+@media (max-width: 700px) {
+  .app-header { padding: 0 16px; }
+  .app-header nav { gap: 12px; font-size: 12px; }
+  .header-user-name { max-width: 80px; }
+  .app-main { padding: 28px 16px 48px; }
+  .hero { padding: 38px 0; }
+  .detail-layout { grid-template-columns: 1fr; }
+  .reservation-row { align-items: flex-start; flex-direction: column; }
+}

@@ -1,23 +1,77 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { createProgram, getProgram, updateProgram } from '../../api/programApi'
+import { getApiErrorMessage } from '../../api/apiError'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
+
+const initialForm = { title: '', type: 'GROUP', description: '', capacity: 8, startAt: '', endAt: '' }
 
 function ProgramFormPage() {
   const { programId } = useParams()
+  const navigate = useNavigate()
   const isEdit = Boolean(programId)
-  const [submitted, setSubmitted] = useState(false)
-  const submit = (event) => { event.preventDefault(); setSubmitted(true) }
+  const { user, loading: userLoading } = useCurrentUser()
+  const [form, setForm] = useState(initialForm)
+  const [loading, setLoading] = useState(isEdit)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!isEdit) return
+    getProgram(programId)
+      .then(({ data }) => setForm({
+        title: data.title,
+        type: data.type,
+        description: data.description ?? '',
+        capacity: data.capacity,
+        startAt: data.startAt?.slice(0, 16) ?? '',
+        endAt: data.endAt?.slice(0, 16) ?? '',
+      }))
+      .catch((requestError) => setError(getApiErrorMessage(requestError, '프로그램을 불러오지 못했습니다.')))
+      .finally(() => setLoading(false))
+  }, [isEdit, programId])
+
+  const change = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (new Date(form.endAt) <= new Date(form.startAt)) {
+      setError('종료 시간은 시작 시간보다 뒤여야 합니다.')
+      return
+    }
+    setSubmitting(true)
+    setError('')
+    const payload = { ...form, capacity: Number(form.capacity) }
+    try {
+      if (localStorage.getItem('accessToken') === 'demo-access-token') {
+        navigate(isEdit ? `/programs/${programId}` : '/programs')
+        return
+      }
+      const { data } = isEdit ? await updateProgram(programId, payload) : await createProgram(payload)
+      navigate(`/programs/${data.id}`)
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, `${isEdit ? '수정' : '등록'}하지 못했습니다.`))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading || userLoading) return <p className="notice">프로그램을 불러오는 중입니다.</p>
+  if (!hasRole(user, 'ROLE_TRAINER')) return <section className="page-card"><h1>접근할 수 없습니다.</h1><p>트레이너만 프로그램을 등록하거나 수정할 수 있습니다.</p></section>
 
   return (
     <section className="card form-card">
-      <div className="section-heading"><div><h1>{isEdit ? '프로그램 수정' : '프로그램 등록'}</h1><p>트레이너가 프로그램 정보를 관리합니다.</p></div></div>
+      <div className="section-heading"><div><h1>{isEdit ? '프로그램 수정' : '프로그램 등록'}</h1><p>수업 정보와 운영 일정을 입력하세요.</p></div></div>
+      {error && <p className="notice notice-error">{error}</p>}
       <form className="form-grid" onSubmit={submit}>
-        <label>프로그램명<input required placeholder="예: 퇴근 후 릴랙스 요가" /></label>
-        <label>유형<select defaultValue="GROUP"><option value="GROUP">그룹 수업</option><option value="PT">1:1 PT</option></select></label>
-        <label>수업 설명<textarea rows="4" placeholder="프로그램 내용을 입력하세요." /></label>
-        <label>정원<input required min="1" type="number" defaultValue="8" /></label>
-        <div className="form-actions"><button className="button button-primary" type="submit">{isEdit ? '수정 저장' : '등록하기'}</button></div>
+        <label>프로그램명<input name="title" value={form.title} onChange={change} required /></label>
+        <label>유형<select name="type" value={form.type} onChange={change}><option value="GROUP">그룹 수업</option><option value="PT">1:1 PT</option></select></label>
+        <label>수업 설명<textarea name="description" rows="4" value={form.description} onChange={change} /></label>
+        <label>정원<input name="capacity" value={form.capacity} onChange={change} required min="1" type="number" /></label>
+        <label>시작 시간<input name="startAt" value={form.startAt} onChange={change} required type="datetime-local" /></label>
+        <label>종료 시간<input name="endAt" value={form.endAt} onChange={change} required type="datetime-local" /></label>
+        <div className="form-actions"><button className="button button-primary" type="submit" disabled={submitting}>{submitting ? '저장 중...' : isEdit ? '수정 저장' : '등록하기'}</button></div>
       </form>
-      {submitted && <p className="notice">현재는 목업입니다. 이후 {isEdit ? 'PATCH /api/programs/{id}' : 'POST /api/programs'}와 연결됩니다.</p>}
     </section>
   )
 }

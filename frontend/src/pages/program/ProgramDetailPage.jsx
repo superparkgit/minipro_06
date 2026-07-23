@@ -81,6 +81,7 @@ function ProgramDetailPage() {
         <hr />
         <p><strong>담당 트레이너</strong><br />{mainTrainer?.name ?? '미정'}</p>
         <p><strong>수업 일정</strong><br />{formatDateTime(program.startAt)} ~ {formatDateTime(program.endAt)}</p>
+        <Link className="button button-secondary" to={`/programs/${program.id}/reviews`}>리뷰 보기</Link>
       </article>
       <aside className="card booking-card">
         <h2>{isTrainer ? '프로그램 운영' : '예약 신청'}</h2>

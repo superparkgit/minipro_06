@@ -107,9 +107,14 @@ public class SecurityConfig {
 														  , "/api/programs/*/trainers/*").hasRole("TRAINER")
 						
 						// Reservation : 로그인 사용자
+						.requestMatchers(HttpMethod.GET, "/api/reservations/me").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/reservations").authenticated()
+						.requestMatchers(HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
+
 						
 						// Reservation : 담당 트레이너
+						.requestMatchers(HttpMethod.GET, "/api/programs/*/reservations"
+													   , "/api/stats/**").hasRole("TRAINER")
 						.requestMatchers(HttpMethod.PATCH, "/api/reservations/*/approve"
 													     , "/api/reservations/*/reject"
 													     , "/api/reservations/*/attendance").hasRole("TRAINER")

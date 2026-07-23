@@ -2,6 +2,7 @@ import apiClient from './apiClient'
 
 export const getPrograms = () => apiClient.get('/programs')
 export const getProgram = (programId) => apiClient.get(`/programs/${programId}`)
+export const getTrainers = () => apiClient.get('/users/trainers')
 export const createProgram = (payload) => apiClient.post('/programs', payload)
 export const updateProgram = (programId, payload) => apiClient.patch(`/programs/${programId}`, payload)
 export const deleteProgram = (programId) => apiClient.delete(`/programs/${programId}`)

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { cancelReservation, getMyReservations } from '../../api/reservationApi'
 import { getApiErrorMessage } from '../../api/apiError'
 import { useCurrentUser } from '../../hooks/useCurrentUser'
 
 const sampleReservations = [
-  { id: 1, programName: '초급 웨이트 트레이닝', status: 'APPROVED', attendanceStatus: 'NOT_CHECKED' },
-  { id: 2, programName: '모닝 요가', status: 'PENDING', attendanceStatus: 'NOT_CHECKED' },
-  { id: 3, programName: '코어 강화 클래스', status: 'APPROVED', attendanceStatus: 'ATTENDED' },
+  { id: 1, programId: 1, programName: '초급 웨이트 트레이닝', status: 'APPROVED', attendanceStatus: 'NOT_CHECKED' },
+  { id: 2, programId: 3, programName: '모닝 요가', status: 'PENDING', attendanceStatus: 'NOT_CHECKED' },
+  { id: 3, programId: 5, programName: '코어 강화 클래스', status: 'APPROVED', attendanceStatus: 'ATTENDED' },
 ]
 
 const readDemoReservations = () => {
@@ -82,6 +83,14 @@ function MyReservationsPage() {
             <div className="row-actions">
               <span className={`badge ${reservation.status.toLowerCase()}`}>{reservation.status}</span>
               {['PENDING', 'APPROVED'].includes(reservation.status) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}
+              {reservation.status === 'APPROVED' && reservation.attendanceStatus === 'ATTENDED' && (
+                <Link
+                  className="button button-primary"
+                  to={`/reviews/write?reservationId=${reservation.id}&programId=${reservation.programId}&programTitle=${encodeURIComponent(reservation.programName)}`}
+                >
+                  리뷰 작성
+                </Link>
+              )}
             </div>
           </article>
         ))}

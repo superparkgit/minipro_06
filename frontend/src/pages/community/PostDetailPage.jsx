@@ -20,10 +20,18 @@ function PostDetailPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    getPost(postId)
+    const controller = new AbortController()
+    setLoading(true)
+    getPost(postId, { signal: controller.signal })
       .then(({ data }) => setPost(data))
-      .catch((requestError) => setError(getApiErrorMessage(requestError, '게시글을 불러오지 못했습니다.')))
-      .finally(() => setLoading(false))
+      .catch((requestError) => {
+        if (requestError.code === 'ERR_CANCELED') return
+        setError(getApiErrorMessage(requestError, '게시글을 불러오지 못했습니다.'))
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
   }, [postId])
 
   const remove = async () => {

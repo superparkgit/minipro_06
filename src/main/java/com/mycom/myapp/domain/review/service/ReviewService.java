@@ -306,7 +306,7 @@ public class ReviewService {
      * 트레이너 평점 집계 (실시간 AVG 쿼리)
      */
     public RatingSummaryResponseDto getTrainerRating(Long trainerId) {
-        Object[] result = reviewRepository.getTrainerRatingSummary(trainerId);
+        Object[] result = reviewRepository.getTrainerRatingSummary(trainerId).get(0);
         long count = (Long) result[0];
         BigDecimal avg = count > 0
                 ? BigDecimal.valueOf((Double) result[1]).setScale(2, RoundingMode.HALF_UP)
@@ -323,7 +323,7 @@ public class ReviewService {
      * 프로그램 평점 집계 (실시간 AVG 쿼리)
      */
     public RatingSummaryResponseDto getProgramRating(Long programId) {
-        Object[] result = reviewRepository.getProgramRatingSummary(programId);
+        Object[] result = reviewRepository.getProgramRatingSummary(programId).get(0);
         long count = (Long) result[0];
         BigDecimal avg = count > 0
                 ? BigDecimal.valueOf((Double) result[1]).setScale(2, RoundingMode.HALF_UP)

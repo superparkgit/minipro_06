@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { cancelReservation, getMyReservations } from '../../api/reservationApi'
 import { getApiErrorMessage } from '../../api/apiError'
+import { useCurrentUser } from '../../hooks/useCurrentUser'
 
 const sampleReservations = [
   { id: 1, programName: '초급 웨이트 트레이닝', status: 'APPROVED', attendanceStatus: 'NOT_CHECKED' },
@@ -24,11 +25,17 @@ const applyUpdates = (items) => {
 }
 
 function MyReservationsPage() {
+  const { user, loading: userLoading } = useCurrentUser()
   const [reservations, setReservations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (userLoading) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     if (localStorage.getItem('accessToken') === 'demo-access-token') {
       setReservations(applyUpdates([...readDemoReservations(), ...sampleReservations]))
       setLoading(false)
@@ -36,9 +43,9 @@ function MyReservationsPage() {
     }
     getMyReservations()
       .then(({ data }) => setReservations(data))
-      .catch(() => setReservations(sampleReservations))
+      .catch((requestError) => setError(getApiErrorMessage(requestError, '예약 목록을 불러오지 못했습니다.')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [user, userLoading])
 
   const cancel = async (reservationId) => {
     if (!window.confirm('이 예약을 취소할까요? 취소 후에는 원래 상태로 되돌릴 수 없습니다.')) return
@@ -58,6 +65,9 @@ function MyReservationsPage() {
       setError(getApiErrorMessage(requestError, '예약을 취소하지 못했습니다.'))
     }
   }
+
+  if (userLoading) return <p className="notice">로그인 정보를 확인하는 중입니다.</p>
+  if (!user) return <section className="page-card"><h1>로그인이 필요합니다.</h1><p>내 예약을 확인하려면 먼저 로그인해 주세요.</p></section>
 
   return (
     <section>

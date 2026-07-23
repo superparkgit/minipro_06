@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { getProgram } from '../../api/programApi'
 import { approveReservation, getProgramReservations, rejectReservation, updateAttendance } from '../../api/reservationApi'
 import { getApiErrorMessage } from '../../api/apiError'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 
 const demoApplicants = [
   { id: 101, userId: 4, userName: '박회원', programId: 1, programName: '퇴근 후 릴랙스 요가', status: 'APPROVED', attendanceStatus: 'NOT_CHECKED' },
@@ -26,23 +28,34 @@ const applyUpdates = (items) => {
 
 function TrainerReservationsPage() {
   const { programId } = useParams()
+  const { user, loading: userLoading } = useCurrentUser()
   const [applicants, setApplicants] = useState([])
+  const [programStatus, setProgramStatus] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
   useEffect(() => {
-    if (localStorage.getItem('accessToken') === 'demo-access-token') {
-      const id = Number(programId)
-      setApplicants(applyUpdates([...readSaved(), ...demoApplicants]).filter((item) => item.programId === id))
+    if (userLoading) return
+    if (!hasRole(user, 'ROLE_TRAINER')) {
       setLoading(false)
       return
     }
-    getProgramReservations(programId)
-      .then(({ data }) => setApplicants(data))
+    if (localStorage.getItem('accessToken') === 'demo-access-token') {
+      const id = Number(programId)
+      setApplicants(applyUpdates([...readSaved(), ...demoApplicants]).filter((item) => item.programId === id))
+      setProgramStatus('COMPLETED')
+      setLoading(false)
+      return
+    }
+    Promise.all([getProgramReservations(programId), getProgram(programId)])
+      .then(([reservationsResponse, programResponse]) => {
+        setApplicants(reservationsResponse.data)
+        setProgramStatus(programResponse.data.status)
+      })
       .catch(() => setError('예약자 목록을 불러오지 못했습니다. 백엔드 연결을 확인해 주세요.'))
       .finally(() => setLoading(false))
-  }, [programId])
+  }, [programId, user, userLoading])
 
   const runAction = async (id, type, action) => {
     const labels = { APPROVE: '승인', REJECT: '거절', ATTENDED: '출석', NO_SHOW: '결석' }
@@ -71,6 +84,9 @@ function TrainerReservationsPage() {
     }
   }
 
+  if (userLoading) return <p className="notice">로그인 정보를 확인하는 중입니다.</p>
+  if (!hasRole(user, 'ROLE_TRAINER')) return <section className="page-card"><h1>접근할 수 없습니다.</h1><p>트레이너만 예약자를 관리할 수 있습니다.</p></section>
+
   return (
     <section>
       <div className="section-heading"><div><h1>예약 관리</h1><p>대기 예약을 승인·거절하고 수업 후 출석을 처리합니다.</p></div></div>
@@ -85,7 +101,7 @@ function TrainerReservationsPage() {
             <div className="row-actions">
               <span className={`badge ${applicant.status.toLowerCase()}`}>{applicant.status}</span>
               {applicant.status === 'PENDING' && <><button className="button button-primary" onClick={() => runAction(applicant.id, 'APPROVE', approveReservation)}>승인</button><button className="button button-danger" onClick={() => runAction(applicant.id, 'REJECT', rejectReservation)}>거절</button></>}
-              {applicant.status === 'APPROVED' && applicant.attendanceStatus === 'NOT_CHECKED' && <>
+              {programStatus === 'COMPLETED' && applicant.status === 'APPROVED' && applicant.attendanceStatus === 'NOT_CHECKED' && <>
                 <button className="button button-secondary" onClick={() => runAction(applicant.id, 'ATTENDED', (id) => updateAttendance(id, { attendanceStatus: 'ATTENDED' }))}>출석</button>
                 <button className="button button-danger" onClick={() => runAction(applicant.id, 'NO_SHOW', (id) => updateAttendance(id, { attendanceStatus: 'NO_SHOW' }))}>결석</button>
               </>}

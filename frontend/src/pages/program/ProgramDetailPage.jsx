@@ -3,12 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { getProgram } from '../../api/programApi'
 import { createReservation } from '../../api/reservationApi'
 import { getApiErrorMessage } from '../../api/apiError'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 import { getProgramById } from './programData'
-
-const readCurrentUser = () => {
-  try { return JSON.parse(localStorage.getItem('fitReserveUser')) }
-  catch { return null }
-}
 
 const formatDateTime = (value) => value
   ? new Intl.DateTimeFormat('ko-KR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(value))
@@ -16,8 +12,7 @@ const formatDateTime = (value) => value
 
 function ProgramDetailPage() {
   const { programId } = useParams()
-  const user = readCurrentUser()
-  const hasRole = (role) => user?.roles?.includes(role)
+  const { user } = useCurrentUser()
   const [program, setProgram] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reserved, setReserved] = useState(false)
@@ -27,7 +22,15 @@ function ProgramDetailPage() {
   useEffect(() => {
     getProgram(programId)
       .then(({ data }) => setProgram(data))
-      .catch(() => { const demo=getProgramById(programId); if(demo)setProgram({...demo,status:'OPEN',startAt:new Date(Date.now()+86400000).toISOString(),endAt:new Date(Date.now()+90000000).toISOString(),trainers:[{id:demo.trainerId,name:demo.trainer,assignmentRole:'MAIN'}]}); else setError('프로그램을 찾을 수 없습니다.') })
+      .catch((requestError) => {
+        if (localStorage.getItem('accessToken') === 'demo-access-token') {
+          const demo = getProgramById(programId)
+          if (demo) setProgram({ ...demo, status: 'OPEN', startAt: new Date(Date.now()+86400000).toISOString(), endAt: new Date(Date.now()+90000000).toISOString(), trainers: [{ id: demo.trainerId, name: demo.trainer, assignmentRole: 'MAIN' }] })
+          else setError('프로그램을 찾을 수 없습니다.')
+        } else {
+          setError(getApiErrorMessage(requestError, '프로그램을 불러오지 못했습니다.'))
+        }
+      })
       .finally(() => setLoading(false))
   }, [programId])
 
@@ -65,7 +68,8 @@ function ProgramDetailPage() {
 
   const mainTrainer = program.trainers?.find((trainer) => trainer.assignmentRole === 'MAIN')
   const reservable = program.status === 'OPEN'
-  const isAssignedTrainer = hasRole('ROLE_TRAINER') && program.trainers?.some((trainer) => trainer.id === user?.id)
+  const isTrainer = hasRole(user, 'ROLE_TRAINER')
+  const isMainTrainer = isTrainer && mainTrainer?.id === user?.id
 
   return (
     <section className="detail-layout">
@@ -79,15 +83,15 @@ function ProgramDetailPage() {
         <p><strong>수업 일정</strong><br />{formatDateTime(program.startAt)} ~ {formatDateTime(program.endAt)}</p>
       </article>
       <aside className="card booking-card">
-        <h2>{hasRole('ROLE_TRAINER') ? '프로그램 운영' : '예약 신청'}</h2>
+        <h2>{isTrainer ? '프로그램 운영' : '예약 신청'}</h2>
         <dl>
           <dt>정원</dt><dd>{program.capacity}명</dd>
           <dt>상태</dt><dd>{program.status}</dd>
         </dl>
         <div className="row-actions">
-          {isAssignedTrainer ? (
+          {isMainTrainer ? (
             <Link className="button button-secondary" to={`/programs/${program.id}/manage`}>프로그램 관리</Link>
-          ) : hasRole('ROLE_TRAINER') ? (
+          ) : isTrainer ? (
             <span className="notice">담당 프로그램만 관리할 수 있습니다.</span>
           ) : user ? (
             <button className="button button-primary" disabled={reserved || submitting || !reservable} onClick={reserve}>

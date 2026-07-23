@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getPrograms } from '../../api/programApi'
+import { getProgramReservations } from '../../api/reservationApi'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 import { programs as demoPrograms } from '../program/programData'
 
 const readReservations = () => {
@@ -9,13 +11,18 @@ const readReservations = () => {
 }
 
 function TrainerStatsPage() {
-  let user = null
-  try { user = JSON.parse(localStorage.getItem('fitReserveUser')) } catch { user = null }
+  const { user, loading: userLoading } = useCurrentUser()
   const [programs, setPrograms] = useState([])
   const [reservations, setReservations] = useState(readReservations)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
+    if (userLoading) return
+    if (!hasRole(user, 'ROLE_TRAINER')) {
+      setLoading(false)
+      return
+    }
     if (localStorage.getItem('accessToken') === 'demo-access-token') {
       setPrograms(demoPrograms.filter((program) => program.trainerId === user?.id))
       setReservations(readReservations())
@@ -23,9 +30,15 @@ function TrainerStatsPage() {
       return
     }
     getPrograms()
-      .then(({ data }) => setPrograms(data.filter((program) => program.trainers?.some((trainer) => trainer.id === user?.id))))
+      .then(async ({ data }) => {
+        const assignedPrograms = data.filter((program) => program.trainers?.some((trainer) => trainer.id === user?.id))
+        const responses = await Promise.all(assignedPrograms.map((program) => getProgramReservations(program.id)))
+        setPrograms(assignedPrograms)
+        setReservations(responses.flatMap(({ data: items }) => items))
+      })
+      .catch(() => setError('트레이너 프로그램과 예약 현황을 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
-  }, [user?.id])
+  }, [user, userLoading])
 
   const counts = useMemo(() => programs.map((program) => {
     const matched = reservations.filter((reservation) => reservation.programId === program.id)
@@ -37,6 +50,9 @@ function TrainerStatsPage() {
     }
   }), [programs, reservations])
 
+  if (userLoading) return <p className="notice">로그인 정보를 확인하는 중입니다.</p>
+  if (!hasRole(user, 'ROLE_TRAINER')) return <section className="page-card"><h1>접근할 수 없습니다.</h1><p>트레이너만 통계를 확인할 수 있습니다.</p></section>
+
   return (
     <section>
       <div className="section-heading">
@@ -44,6 +60,7 @@ function TrainerStatsPage() {
         <Link className="button button-secondary" to="/programs/new">프로그램 등록</Link>
       </div>
       {loading && <p className="notice">담당 프로그램을 불러오는 중입니다.</p>}
+      {error && <p className="notice notice-error">{error}</p>}
       {!loading && counts.length === 0 && <p className="page-card">현재 담당 중인 프로그램이 없습니다.</p>}
       <div className="reservation-list">
         {counts.map((program) => (

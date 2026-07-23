@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createProgram, getProgram, updateProgram } from '../../api/programApi'
 import { getApiErrorMessage } from '../../api/apiError'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 
 const initialForm = { title: '', type: 'GROUP', description: '', capacity: 8, startAt: '', endAt: '' }
 
@@ -9,6 +10,7 @@ function ProgramFormPage() {
   const { programId } = useParams()
   const navigate = useNavigate()
   const isEdit = Boolean(programId)
+  const { user, loading: userLoading } = useCurrentUser()
   const [form, setForm] = useState(initialForm)
   const [loading, setLoading] = useState(isEdit)
   const [submitting, setSubmitting] = useState(false)
@@ -54,7 +56,8 @@ function ProgramFormPage() {
     }
   }
 
-  if (loading) return <p className="notice">프로그램을 불러오는 중입니다.</p>
+  if (loading || userLoading) return <p className="notice">프로그램을 불러오는 중입니다.</p>
+  if (!hasRole(user, 'ROLE_TRAINER')) return <section className="page-card"><h1>접근할 수 없습니다.</h1><p>트레이너만 프로그램을 등록하거나 수정할 수 있습니다.</p></section>
 
   return (
     <section className="card form-card">

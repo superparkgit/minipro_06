@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getPrograms } from '../../api/programApi'
+import { getApiErrorMessage } from '../../api/apiError'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 import { programs as demoPrograms } from './programData'
 
 const typeIcon = { PT: '🏋️', GROUP: '🧘' }
@@ -10,13 +12,21 @@ const formatSchedule = (startAt) => startAt
   : '일정 미정'
 
 function ProgramListPage() {
+  const { user } = useCurrentUser()
   const [programs, setPrograms] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     getPrograms()
       .then(({ data }) => setPrograms(data))
-      .catch(() => setPrograms(demoPrograms.map((item) => ({ ...item, startAt: new Date(Date.now()+86400000*item.id).toISOString(), status: 'OPEN', trainers:[{id:item.trainerId,name:item.trainer,assignmentRole:'MAIN'}] }))))
+      .catch((requestError) => {
+        if (localStorage.getItem('accessToken') === 'demo-access-token') {
+          setPrograms(demoPrograms.map((item) => ({ ...item, startAt: new Date(Date.now()+86400000*item.id).toISOString(), status: 'OPEN', trainers:[{id:item.trainerId,name:item.trainer,assignmentRole:'MAIN'}] })))
+        } else {
+          setError(getApiErrorMessage(requestError, '프로그램 목록을 불러오지 못했습니다.'))
+        }
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -27,9 +37,10 @@ function ProgramListPage() {
           <h1>내게 맞는 프로그램</h1>
           <p>목표와 일정에 맞는 수업을 선택해 보세요.</p>
         </div>
-        <Link className="button button-secondary" to="/programs/new">프로그램 등록</Link>
+        {hasRole(user, 'ROLE_TRAINER') && <Link className="button button-secondary" to="/programs/new">프로그램 등록</Link>}
       </section>
       {loading && <p className="notice">프로그램을 불러오는 중입니다.</p>}
+      {error && <p className="notice notice-error">{error}</p>}
       {!loading && programs.length === 0 && <p className="page-card">등록된 프로그램이 없습니다.</p>}
       <section className="grid program-grid">
         {programs.map((program) => (

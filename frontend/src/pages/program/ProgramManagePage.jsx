@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { addTrainer, cancelProgram, completeProgram, getProgram, removeTrainer } from '../../api/programApi'
 import { getApiErrorMessage } from '../../api/apiError'
+import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 import { getProgramById } from './programData'
 
 function ProgramManagePage() {
   const { programId } = useParams()
+  const { user, loading: userLoading } = useCurrentUser()
   const [program, setProgram] = useState(null)
   const [trainerId, setTrainerId] = useState('')
   const [loading, setLoading] = useState(true)
@@ -15,10 +17,14 @@ function ProgramManagePage() {
   useEffect(() => {
     getProgram(programId)
       .then(({ data }) => setProgram(data))
-      .catch(() => {
-        const demo = getProgramById(programId)
-        if (demo) setProgram({ ...demo, status: 'OPEN', trainers: [{ id: demo.trainerId, name: demo.trainer, assignmentRole: 'MAIN' }] })
-        else setError('프로그램을 찾을 수 없습니다.')
+      .catch((requestError) => {
+        if (localStorage.getItem('accessToken') === 'demo-access-token') {
+          const demo = getProgramById(programId)
+          if (demo) setProgram({ ...demo, status: 'OPEN', trainers: [{ id: demo.trainerId, name: demo.trainer, assignmentRole: 'MAIN' }] })
+          else setError('프로그램을 찾을 수 없습니다.')
+        } else {
+          setError(getApiErrorMessage(requestError, '프로그램을 불러오지 못했습니다.'))
+        }
       })
       .finally(() => setLoading(false))
   }, [programId])
@@ -61,11 +67,12 @@ function ProgramManagePage() {
     } catch (requestError) { setError(getApiErrorMessage(requestError, '보조 트레이너를 제외하지 못했습니다.')) }
   }
 
-  if (loading) return <p className="notice">프로그램을 불러오는 중입니다.</p>
+  if (loading || userLoading) return <p className="notice">프로그램을 불러오는 중입니다.</p>
   if (!program) return <section className="page-card"><h1>프로그램을 찾을 수 없습니다.</h1><p>{error}</p></section>
 
   const mainTrainer = program.trainers?.find((trainer) => trainer.assignmentRole === 'MAIN')
   const assistants = program.trainers?.filter((trainer) => trainer.assignmentRole === 'ASSISTANT') ?? []
+  if (!hasRole(user, 'ROLE_TRAINER') || mainTrainer?.id !== user?.id) return <section className="page-card"><h1>접근할 수 없습니다.</h1><p>해당 프로그램의 MAIN 트레이너만 관리할 수 있습니다.</p></section>
 
   return (
     <section>

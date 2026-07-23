@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { addTrainer, cancelProgram, completeProgram, getProgram, removeTrainer } from '../../api/programApi'
+import { addTrainer, cancelProgram, completeProgram, getProgram, getPrograms, getTrainers, removeTrainer } from '../../api/programApi'
 import { getApiErrorMessage } from '../../api/apiError'
 import { hasRole, useCurrentUser } from '../../hooks/useCurrentUser'
 import { getProgramById } from './programData'
@@ -10,9 +10,11 @@ function ProgramManagePage() {
   const { user, loading: userLoading } = useCurrentUser()
   const [program, setProgram] = useState(null)
   const [trainerId, setTrainerId] = useState('')
+  const [trainerOptions, setTrainerOptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [trainerListNotice, setTrainerListNotice] = useState('')
 
   useEffect(() => {
     getProgram(programId)
@@ -27,6 +29,22 @@ function ProgramManagePage() {
         }
       })
       .finally(() => setLoading(false))
+
+    getTrainers()
+      .then(({ data }) => setTrainerOptions(data))
+      .catch(async () => {
+        try {
+          const { data: programs } = await getPrograms()
+          const trainersById = new Map()
+          programs.forEach((item) => {
+            item.trainers?.forEach((trainer) => trainersById.set(trainer.id, trainer))
+          })
+          setTrainerOptions([...trainersById.values()])
+          setTrainerListNotice('전체 트레이너 목록을 불러오지 못해 기존 프로그램 담당자만 표시합니다.')
+        } catch {
+          setTrainerListNotice('트레이너 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')
+        }
+      })
   }, [programId])
 
   const changeStatus = async (nextStatus) => {
@@ -72,6 +90,8 @@ function ProgramManagePage() {
 
   const mainTrainer = program.trainers?.find((trainer) => trainer.assignmentRole === 'MAIN')
   const assistants = program.trainers?.filter((trainer) => trainer.assignmentRole === 'ASSISTANT') ?? []
+  const assignedTrainerIds = new Set(program.trainers?.map((trainer) => trainer.id) ?? [])
+  const availableTrainers = trainerOptions.filter((trainer) => !assignedTrainerIds.has(trainer.id))
   if (!hasRole(user, 'ROLE_TRAINER') || mainTrainer?.id !== user?.id) return <section className="page-card"><h1>접근할 수 없습니다.</h1><p>해당 프로그램의 MAIN 트레이너만 관리할 수 있습니다.</p></section>
 
   return (
@@ -83,7 +103,9 @@ function ProgramManagePage() {
         <article className="card"><h2>예약 관리</h2><p className="muted">신청 회원을 승인·거절하고 수업 후 출석을 처리합니다.</p><Link className="button button-primary" to={`/programs/${program.id}/reservations`}>예약자 보기</Link></article>
       </div>
       <article className="card assistant-card">
-        <div className="section-heading"><div><h2>담당 트레이너</h2><p>대표 담당자와 보조 담당자를 확인합니다.</p></div><form className="row-actions" onSubmit={addAssistant}><input type="number" min="1" value={trainerId} onChange={(event) => setTrainerId(event.target.value)} placeholder="트레이너 ID" required /><button className="button button-secondary">보조 강사 추가</button></form></div>
+        <div className="section-heading"><div><h2>담당 트레이너</h2><p>대표 담당자와 보조 담당자를 확인합니다.</p></div><form className="row-actions" onSubmit={addAssistant}><select value={trainerId} onChange={(event) => setTrainerId(event.target.value)} required><option value="">보조 트레이너 선택</option>{availableTrainers.map((trainer) => <option key={trainer.id} value={trainer.id}>{trainer.name}</option>)}</select><button className="button button-secondary" disabled={!trainerId}>보조 강사 추가</button></form></div>
+        {trainerListNotice && <p className="notice">{trainerListNotice}</p>}
+        {availableTrainers.length === 0 && !trainerListNotice && <p className="muted">현재 선택 가능한 트레이너가 없습니다.</p>}
         <div className="reservation-list">
           <div className="reservation-row"><div><h3>{mainTrainer?.name ?? '미정'}</h3><p>대표 담당 트레이너</p></div><span className="badge">MAIN</span></div>
           {assistants.map((assistant) => <div className="reservation-row" key={assistant.id}><div><h3>{assistant.name}</h3><p>보조 담당 트레이너</p></div><div className="row-actions"><span className="badge">ASSISTANT</span><button className="button button-danger" onClick={() => removeAssistant(assistant)}>제거</button></div></div>)}

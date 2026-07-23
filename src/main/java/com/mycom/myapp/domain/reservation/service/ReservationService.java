@@ -93,6 +93,9 @@ public class ReservationService {
                 && reservation.getStatus() != ReservationStatus.APPROVED) {
             throw badRequest("취소할 수 없는 예약 상태입니다.");
         }
+        if (reservation.getAttendanceStatus() != AttendanceStatus.NOT_CHECKED) {
+            throw badRequest("출석 처리된 예약은 취소할 수 없습니다.");
+        }
         reservation.cancel();
     }
 

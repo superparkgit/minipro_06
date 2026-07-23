@@ -96,6 +96,7 @@ CREATE TABLE posts (
   category VARCHAR(255) NOT NULL,
   title VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
+  view_count INT NOT NULL DEFAULT 0,
   created_at DATETIME(6),
   updated_at DATETIME(6),
   PRIMARY KEY (id),

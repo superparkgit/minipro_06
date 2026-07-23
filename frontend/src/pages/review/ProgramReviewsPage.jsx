@@ -88,7 +88,9 @@ function ProgramReviewsPage() {
     setError('')
     try {
       await reportReview(review.id, { reason })
-      setReviews((items) => items.filter((item) => item.id !== review.id))
+      setReviews((items) => items.map((item) => item.id === review.id
+        ? { ...item, status: 'HIDDEN', content: '트레이너의 권리 침해 신고로 가려진 리뷰입니다.' }
+        : item))
       setOpenReportId(null)
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, '삭제 요청을 등록하지 못했습니다.'))
@@ -123,8 +125,8 @@ function ProgramReviewsPage() {
 
       <div className="review-list">
         {reviews.map((review) => {
-          const isOwner = user?.id === review.userId
-          const isAssignedTrainer = hasRole(user, 'ROLE_TRAINER') && user?.id === review.trainerId
+          const isOwner = user?.id === review.userId && review.status !== 'HIDDEN'
+          const isAssignedTrainer = hasRole(user, 'ROLE_TRAINER') && user?.id === review.trainerId && review.status !== 'HIDDEN'
 
           return (
           <article className="card review-card" key={review.id}>

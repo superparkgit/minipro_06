@@ -20,7 +20,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     Optional<Review> findByReservationId(Long reservationId);
 
     @EntityGraph(attributePaths = {"reservation", "user", "program", "trainer"})
-    Page<Review> findByProgramIdAndStatus(Long programId, ReviewStatus status, Pageable pageable);
+    Page<Review> findByProgramIdAndStatusIn(Long programId, List<ReviewStatus> statuses, Pageable pageable);
 
     @EntityGraph(attributePaths = {"reservation", "user", "program", "trainer"})
     Page<Review> findByStatus(ReviewStatus status, Pageable pageable);

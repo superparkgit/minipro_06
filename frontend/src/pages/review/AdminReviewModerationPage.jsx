@@ -50,8 +50,6 @@ function AdminReviewModerationPage() {
         </div>
       </section>
 
-      <p className="api-note">신고 사유는 현재 API 응답에 포함되어 있지 않아 리뷰 내용만 표시됩니다.</p>
-
       {loading && <p className="notice">목록을 불러오는 중입니다.</p>}
       {error && <p className="notice notice-error">{error}</p>}
       {!loading && !error && reviews.length === 0 && <p className="page-card">심사 대기 중인 리뷰가 없습니다.</p>}
@@ -66,6 +64,7 @@ function AdminReviewModerationPage() {
               <span>·</span><span>담당 트레이너 {review.trainerName}</span>
             </div>
             <p>{review.content}</p>
+            {review.reportReason && <p className="notice notice-error">신고 사유: {review.reportReason}</p>}
             <div className="row-actions">
               <button className="button button-danger" onClick={() => decide(review.id, 'APPROVED')}>승인(삭제 확정)</button>
               <button className="button button-secondary" onClick={() => decide(review.id, 'REJECTED')}>반려(복원)</button>

@@ -63,7 +63,7 @@ function AppLayout() {
           {navigationItems
             .filter(({ to }) => {
               if (to === '/login') return false
-              if (to === '/admin/users') return isAdmin
+              if (to.startsWith('/admin')) return isAdmin
               return true
             })
             .map(({ to, label }) => <NavLink key={to} to={to}>{label}</NavLink>)}

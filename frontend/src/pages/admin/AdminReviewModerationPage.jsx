@@ -150,10 +150,6 @@ function AdminReviewModerationPage() {
         )}
       </header>
 
-      <p className="admin-review-note">
-        신고 사유는 현재 심사 목록 API 응답에 포함되지 않아 리뷰 내용과 작성 정보만 표시됩니다.
-      </p>
-
       {actionMessage && (
         <p
           className={`notice ${actionMessage.type === 'error' ? 'notice-error' : ''}`}
@@ -203,6 +199,10 @@ function AdminReviewModerationPage() {
                 </div>
 
                 <p className="admin-review-content">{review.content}</p>
+
+                {review.reportReason && (
+                  <p className="notice notice-error">신고 사유: {review.reportReason}</p>
+                )}
 
                 <dl className="admin-review-meta">
                   <div><dt>작성자</dt><dd>{review.userName}</dd></div>

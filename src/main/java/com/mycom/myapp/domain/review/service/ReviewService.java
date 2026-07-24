@@ -153,10 +153,12 @@ public class ReviewService {
     }
 
     /**
-     * 프로그램별 리뷰 목록 (VISIBLE만, 공개)
+     * 프로그램별 리뷰 목록 (공개)
+     * 신고되어 심사 대기 중인 리뷰(HIDDEN)는 목록에서 사라지지 않고, 내용만 가려서 노출한다.
      */
     public Page<ReviewResponseDto> getReviewsByProgram(Long programId, Pageable pageable) {
-        Page<Review> reviews = reviewRepository.findByProgramIdAndStatus(programId, ReviewStatus.VISIBLE, pageable);
+        Page<Review> reviews = reviewRepository.findByProgramIdAndStatusIn(
+                programId, List.of(ReviewStatus.VISIBLE, ReviewStatus.HIDDEN), pageable);
         
         List<Long> reviewIds = reviews.stream().map(Review::getId).toList();
         List<ReviewReply> replies = reviewReplyRepository.findByReviewIdIn(reviewIds);
@@ -266,8 +268,14 @@ public class ReviewService {
      * 관리자 심사 대기 목록 (HIDDEN)
      */
     public Page<ReviewResponseDto> getHiddenReviews(Pageable pageable) {
-        return reviewRepository.findByStatus(ReviewStatus.HIDDEN, pageable)
-                .map(ReviewResponseDto::from);
+        Page<Review> reviews = reviewRepository.findByStatus(ReviewStatus.HIDDEN, pageable);
+
+        List<Long> reviewIds = reviews.stream().map(Review::getId).toList();
+        Map<Long, String> reasonByReviewId = reviewReportRepository
+                .findByReviewIdInAndStatus(reviewIds, ReportStatus.PENDING).stream()
+                .collect(Collectors.toMap(report -> report.getReview().getId(), ReviewReport::getReason));
+
+        return reviews.map(review -> ReviewResponseDto.from(review, reasonByReviewId.get(review.getId())));
     }
 
     /**
@@ -306,7 +314,7 @@ public class ReviewService {
      * 트레이너 평점 집계 (실시간 AVG 쿼리)
      */
     public RatingSummaryResponseDto getTrainerRating(Long trainerId) {
-        Object[] result = reviewRepository.getTrainerRatingSummary(trainerId);
+        Object[] result = reviewRepository.getTrainerRatingSummary(trainerId).get(0);
         long count = (Long) result[0];
         BigDecimal avg = count > 0
                 ? BigDecimal.valueOf((Double) result[1]).setScale(2, RoundingMode.HALF_UP)
@@ -323,7 +331,7 @@ public class ReviewService {
      * 프로그램 평점 집계 (실시간 AVG 쿼리)
      */
     public RatingSummaryResponseDto getProgramRating(Long programId) {
-        Object[] result = reviewRepository.getProgramRatingSummary(programId);
+        Object[] result = reviewRepository.getProgramRatingSummary(programId).get(0);
         long count = (Long) result[0];
         BigDecimal avg = count > 0
                 ? BigDecimal.valueOf((Double) result[1]).setScale(2, RoundingMode.HALF_UP)

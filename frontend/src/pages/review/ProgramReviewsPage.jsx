@@ -18,6 +18,7 @@ const formatDate = (value) => value
   : ''
 
 const stars = (rating) => '★★★★★☆☆☆☆☆'.slice(5 - rating, 10 - rating)
+const formatRating = (value) => Number(value).toFixed(1)
 
 function ProgramReviewsPage() {
   const { programId } = useParams()
@@ -88,7 +89,9 @@ function ProgramReviewsPage() {
     setError('')
     try {
       await reportReview(review.id, { reason })
-      setReviews((items) => items.filter((item) => item.id !== review.id))
+      setReviews((items) => items.map((item) => item.id === review.id
+        ? { ...item, status: 'HIDDEN', content: '트레이너의 권리 침해 신고로 가려진 리뷰입니다.' }
+        : item))
       setOpenReportId(null)
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, '삭제 요청을 등록하지 못했습니다.'))
@@ -107,12 +110,20 @@ function ProgramReviewsPage() {
       <div className="grid rating-summary-grid">
         <div className="card stat-card">
           <p className="muted">프로그램 평점</p>
-          <h2>{programRating ? `${programRating.averageRating} (${programRating.reviewCount}건)` : '-'}</h2>
+          {programRating ? (
+            <div className="rating-line">
+              <span className="star-rating">{stars(Math.round(programRating.averageRating))}</span>
+              <h2>{formatRating(programRating.averageRating)} ({programRating.reviewCount}건)</h2>
+            </div>
+          ) : <h2>-</h2>}
         </div>
         {trainerRating && (
           <div className="card stat-card">
             <p className="muted">{trainerRating.name} 트레이너 평점</p>
-            <h2>{trainerRating.averageRating} ({trainerRating.reviewCount}건)</h2>
+            <div className="rating-line">
+              <span className="star-rating">{stars(Math.round(trainerRating.averageRating))}</span>
+              <h2>{formatRating(trainerRating.averageRating)} ({trainerRating.reviewCount}건)</h2>
+            </div>
           </div>
         )}
       </div>
@@ -123,8 +134,8 @@ function ProgramReviewsPage() {
 
       <div className="review-list">
         {reviews.map((review) => {
-          const isOwner = user?.id === review.userId
-          const isAssignedTrainer = hasRole(user, 'ROLE_TRAINER') && user?.id === review.trainerId
+          const isOwner = user?.id === review.userId && review.status !== 'HIDDEN'
+          const isAssignedTrainer = hasRole(user, 'ROLE_TRAINER') && user?.id === review.trainerId && review.status !== 'HIDDEN'
 
           return (
           <article className="card review-card" key={review.id}>

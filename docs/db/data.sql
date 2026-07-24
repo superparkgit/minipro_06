@@ -70,10 +70,10 @@ INSERT INTO reservation (id, user_id, program_id, status, attendance_status, cre
   (6, 4, 5, 'APPROVED', 'ATTENDED', NOW()),
   (7, 5, 5, 'APPROVED', 'NO_SHOW', NOW());
 
-INSERT INTO posts (id, writer_id, category, title, content, created_at, updated_at) VALUES
-  (1, 5, 'QUESTION', '예약 승인까지 얼마나 걸리나요?', '대기 중인 예약은 언제 승인되나요?', NOW(), NOW()),
-  (2, 1, 'NOTICE', '센터 이용 안내', '수업 시작 10분 전까지 입장해 주세요.', NOW(), NOW()),
-  (3, 6, 'QUESTION', '예약 취소 방법 문의', '승인 전후 취소 방법이 궁금합니다.', NOW(), NOW());
+INSERT INTO posts (id, writer_id, category, title, content, view_count, created_at, updated_at) VALUES
+  (1, 5, 'QUESTION', '예약 승인까지 얼마나 걸리나요?', '대기 중인 예약은 언제 승인되나요?', 12, NOW(), NOW()),
+  (2, 1, 'NOTICE', '센터 이용 안내', '수업 시작 10분 전까지 입장해 주세요.', 34, NOW(), NOW()),
+  (3, 6, 'QUESTION', '예약 취소 방법 문의', '승인 전후 취소 방법이 궁금합니다.', 5, NOW(), NOW());
 
 INSERT INTO comments (id, post_id, writer_id, content, created_at, updated_at) VALUES
   (1, 1, 2, '트레이너 확인 후 승인됩니다.', NOW(), NOW()),

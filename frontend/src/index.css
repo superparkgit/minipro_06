@@ -136,6 +136,9 @@ button { cursor: pointer; }
 .review-card .meta { margin-bottom: 8px; }
 .review-reply { margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: #f5f5f7; }
 .star-rating { color: #ff9f0a; letter-spacing: 1px; }
+.rating-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rating-line h2 { margin: 0; font-size: 18px; }
+.rating-line .star-rating { font-size: 16px; }
 .rating-input { display: flex; gap: 4px; }
 .star-button { width: 36px; height: 36px; border: 0; border-radius: 10px; background: #f5f5f7; color: #d2d2d7; font-size: 18px; }
 .star-button.active { color: #ff9f0a; background: #fff4e5; }

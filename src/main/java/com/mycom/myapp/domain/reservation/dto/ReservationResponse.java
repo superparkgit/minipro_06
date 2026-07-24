@@ -9,6 +9,7 @@ import com.mycom.myapp.domain.reservation.entity.Reservation.AttendanceStatus;
 public record ReservationResponse(
     Long id,
     Long userId,
+    String userName,
     Long programId,
     String programName,
     ReservationStatus status,
@@ -19,6 +20,7 @@ public record ReservationResponse(
         return new ReservationResponse(
             reservation.getId(),
             reservation.getUser().getId(),
+            reservation.getUser().getName(),
             reservation.getProgram().getId(),
             reservation.getProgram().getTitle(),
             reservation.getStatus(),

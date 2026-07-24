@@ -23,6 +23,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     Page<Review> findByProgramIdAndStatusIn(Long programId, List<ReviewStatus> statuses, Pageable pageable);
 
     @EntityGraph(attributePaths = {"reservation", "user", "program", "trainer"})
+    Page<Review> findByTrainerIdAndStatusIn(Long trainerId, List<ReviewStatus> statuses, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"reservation", "user", "program", "trainer"})
     Page<Review> findByStatus(ReviewStatus status, Pageable pageable);
 
     // 트레이너 평점 실시간 집계 (count, avg)

@@ -90,6 +90,7 @@ public class SecurityConfig {
 								
 								// Review / Rating
 								"/api/programs/*/reviews",
+								"/api/trainers/*/reviews",
 								"/api/trainers/*/rating",
 								"/api/programs/*/rating"
 								).permitAll()

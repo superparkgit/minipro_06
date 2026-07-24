@@ -159,12 +159,25 @@ public class ReviewService {
     public Page<ReviewResponseDto> getReviewsByProgram(Long programId, Pageable pageable) {
         Page<Review> reviews = reviewRepository.findByProgramIdAndStatusIn(
                 programId, List.of(ReviewStatus.VISIBLE, ReviewStatus.HIDDEN), pageable);
-        
+        return withReplies(reviews);
+    }
+
+    /**
+     * 트레이너별 리뷰 목록 (공개, 담당한 모든 프로그램 포함)
+     * 신고되어 심사 대기 중인 리뷰(HIDDEN)는 목록에서 사라지지 않고, 내용만 가려서 노출한다.
+     */
+    public Page<ReviewResponseDto> getReviewsByTrainer(Long trainerId, Pageable pageable) {
+        Page<Review> reviews = reviewRepository.findByTrainerIdAndStatusIn(
+                trainerId, List.of(ReviewStatus.VISIBLE, ReviewStatus.HIDDEN), pageable);
+        return withReplies(reviews);
+    }
+
+    private Page<ReviewResponseDto> withReplies(Page<Review> reviews) {
         List<Long> reviewIds = reviews.stream().map(Review::getId).toList();
         List<ReviewReply> replies = reviewReplyRepository.findByReviewIdIn(reviewIds);
         Map<Long, ReviewReply> replyMap = replies.stream()
                 .collect(Collectors.toMap(r -> r.getReview().getId(), r -> r));
-        
+
         return reviews.map(review -> {
             ReviewReply reply = replyMap.get(review.getId());
             ReviewReplyResponseDto replyDto = reply != null ? ReviewReplyResponseDto.from(reply) : null;

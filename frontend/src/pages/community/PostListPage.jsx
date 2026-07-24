@@ -12,6 +12,11 @@ const categories = [
 
 const categoryLabel = { QUESTION: '질문', NOTICE: '공지' }
 
+const sortOptions = [
+  { value: 'createdAt,desc', label: '최신순' },
+  { value: 'viewCount,desc', label: '조회순' },
+]
+
 const formatDate = (value) => value
   ? new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium' }).format(new Date(value))
   : ''
@@ -21,6 +26,7 @@ function PostListPage() {
   const [keyword, setKeyword] = useState('')
   const [keywordInput, setKeywordInput] = useState('')
   const [mine, setMine] = useState(false)
+  const [sort, setSort] = useState(sortOptions[0].value)
   const [page, setPage] = useState(0)
   const [posts, setPosts] = useState([])
   const [totalPages, setTotalPages] = useState(0)
@@ -31,8 +37,8 @@ function PostListPage() {
     setLoading(true)
     setError('')
     const request = mine
-      ? getMyPosts({ page })
-      : getPosts({ category: category || undefined, keyword: keyword || undefined, page })
+      ? getMyPosts({ page, sort })
+      : getPosts({ category: category || undefined, keyword: keyword || undefined, page, sort })
 
     request
       .then(({ data }) => {
@@ -41,7 +47,7 @@ function PostListPage() {
       })
       .catch((requestError) => setError(getApiErrorMessage(requestError, '게시글 목록을 불러오지 못했습니다.')))
       .finally(() => setLoading(false))
-  }, [category, keyword, mine, page])
+  }, [category, keyword, mine, sort, page])
 
   const submitSearch = (event) => {
     event.preventDefault()
@@ -81,6 +87,17 @@ function PostListPage() {
           />
           <button className="button button-secondary" type="submit" disabled={mine}>검색</button>
         </form>
+        <div className="post-tabs">
+          {sortOptions.map((item) => (
+            <button
+              key={item.value}
+              className={`tab ${sort === item.value ? 'active' : ''}`}
+              onClick={() => { setSort(item.value); setPage(0) }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
         <label className="post-mine-toggle">
           <input
             type="checkbox"

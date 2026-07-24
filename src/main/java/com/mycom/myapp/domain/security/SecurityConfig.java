@@ -110,10 +110,6 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/reservations/me").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/reservations").authenticated()
 						.requestMatchers(HttpMethod.PATCH, "/api/reservations/*/cancel").authenticated()
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
 						
 						// Reservation : 담당 트레이너
 						.requestMatchers(HttpMethod.GET, "/api/programs/*/reservations"

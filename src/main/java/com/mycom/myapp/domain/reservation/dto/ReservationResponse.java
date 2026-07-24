@@ -14,9 +14,17 @@ public record ReservationResponse(
     String programName,
     ReservationStatus status,
     AttendanceStatus attendanceStatus,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    Long reviewId,
+    Integer reviewRating,
+    String reviewContent
 ) {
     public static ReservationResponse from(Reservation reservation) {
+        return from(reservation, null, null, null);
+    }
+
+    public static ReservationResponse from(
+            Reservation reservation, Long reviewId, Integer reviewRating, String reviewContent) {
         return new ReservationResponse(
             reservation.getId(),
             reservation.getUser().getId(),
@@ -25,7 +33,10 @@ public record ReservationResponse(
             reservation.getProgram().getTitle(),
             reservation.getStatus(),
             reservation.getAttendanceStatus(),
-            reservation.getCreatedAt()
+            reservation.getCreatedAt(),
+            reviewId,
+            reviewRating,
+            reviewContent
         );
     }
 }

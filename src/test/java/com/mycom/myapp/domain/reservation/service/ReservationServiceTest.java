@@ -179,6 +179,34 @@ class ReservationServiceTest {
                 .isInstanceOf(ResponseStatusException.class);
     }
 
+    @Test
+    @DisplayName("예약 취소 실패 - 출석 완료된 예약")
+    void cancelReservation_attended() {
+        Reservation reservation = reservation(500L, user(1L, "회원"), program(100L, user(10L, "트레이너"), 5));
+        reservation.approve();
+        reservation.markAttendance(AttendanceStatus.ATTENDED);
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.cancelReservation(500L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("출석 처리된 예약은 취소할 수 없습니다.");
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("예약 취소 실패 - 결석 처리된 예약")
+    void cancelReservation_noShow() {
+        Reservation reservation = reservation(500L, user(1L, "회원"), program(100L, user(10L, "트레이너"), 5));
+        reservation.approve();
+        reservation.markAttendance(AttendanceStatus.NO_SHOW);
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.cancelReservation(500L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("출석 처리된 예약은 취소할 수 없습니다.");
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.APPROVED);
+    }
+
     // ===== 예약 승인 =====
 
     @Test

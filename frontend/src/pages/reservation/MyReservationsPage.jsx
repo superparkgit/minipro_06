@@ -82,7 +82,7 @@ function MyReservationsPage() {
             <div><h3>{reservation.programName}</h3><p>출석 상태: {reservation.attendanceStatus}</p></div>
             <div className="row-actions">
               <span className={`badge ${reservation.status.toLowerCase()}`}>{reservation.status}</span>
-              {['PENDING', 'APPROVED'].includes(reservation.status) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}
+              {['PENDING', 'APPROVED'].includes(reservation.status) && !['ATTENDED', 'NO_SHOW'].includes(reservation.attendanceStatus) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}
               {reservation.status === 'APPROVED' && reservation.attendanceStatus === 'ATTENDED' && (
                 <Link
                   className="button button-primary"

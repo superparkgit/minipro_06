@@ -90,6 +90,7 @@ public class SecurityConfig {
 								
 								// Review / Rating
 								"/api/programs/*/reviews",
+								"/api/trainers/*/reviews",
 								"/api/trainers/*/rating",
 								"/api/programs/*/rating"
 								).permitAll()
@@ -135,6 +136,7 @@ public class SecurityConfig {
 						
 							// 작성자 본인
 						.requestMatchers(HttpMethod.PUT, "/api/reviews/*").authenticated()
+						.requestMatchers(HttpMethod.DELETE, "/api/reviews/*").authenticated()
 						
 							// 담당 트레이너
 						.requestMatchers(HttpMethod.POST, "/api/reviews/*/replies"

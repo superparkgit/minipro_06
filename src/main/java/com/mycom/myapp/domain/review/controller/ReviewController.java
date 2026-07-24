@@ -70,6 +70,17 @@ public class ReviewController {
     }
 
     /**
+     * 트레이너별 리뷰 목록 (담당한 모든 프로그램 포함, 전체 공개)
+     */
+    @GetMapping("/trainers/{trainerId}/reviews")
+    public ResponseEntity<Page<ReviewResponseDto>> getReviewsByTrainer(
+            @PathVariable Long trainerId,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<ReviewResponseDto> response = reviewService.getReviewsByTrainer(trainerId, pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * 트레이너 답변 등록 (담당 트레이너 본인)
      */
     @PostMapping("/reviews/{reviewId}/replies")

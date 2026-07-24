@@ -27,6 +27,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -60,17 +61,25 @@ public class ReviewService {
             throw new BusinessRuleException("참여 완료된 예약만 리뷰를 작성할 수 있습니다.");
         }
 
-        // USER_DELETED(작성자 직접 삭제)인 경우 재작성 허용, 그 외 상태는 중복으로 간주
-        if (reviewRepository.existsByReservationIdAndStatusNot(reservationId, ReviewStatus.USER_DELETED)) {
-            throw new BusinessRuleException("이미 리뷰를 작성한 예약입니다.");
-        }
-
         Program program = reservation.getProgram();
         validateReviewPeriod(program);
 
         int rating = requestDto.getRating();
         if (rating < 1 || rating > 5) {
             throw new BusinessRuleException("평점은 1~5 사이여야 합니다.");
+        }
+
+        // reservation_id는 DB에서 유일해야 해서(review.reservation의 unique 제약) 예약당 리뷰 행은 평생 하나뿐이다.
+        // USER_DELETED(작성자 직접 삭제) 상태면 새 행을 insert하는 대신 그 행을 되살려 갱신한다.
+        Optional<Review> existing = reviewRepository.findByReservationId(reservationId);
+        if (existing.isPresent()) {
+            Review review = existing.get();
+            if (review.getStatus() != ReviewStatus.USER_DELETED) {
+                throw new BusinessRuleException("이미 리뷰를 작성한 예약입니다.");
+            }
+            review.update(rating, requestDto.getContent());
+            review.restore();
+            return ReviewResponseDto.from(review);
         }
 
         User user = reservation.getUser();
@@ -159,12 +168,25 @@ public class ReviewService {
     public Page<ReviewResponseDto> getReviewsByProgram(Long programId, Pageable pageable) {
         Page<Review> reviews = reviewRepository.findByProgramIdAndStatusIn(
                 programId, List.of(ReviewStatus.VISIBLE, ReviewStatus.HIDDEN), pageable);
-        
+        return withReplies(reviews);
+    }
+
+    /**
+     * 트레이너별 리뷰 목록 (공개, 담당한 모든 프로그램 포함)
+     * 신고되어 심사 대기 중인 리뷰(HIDDEN)는 목록에서 사라지지 않고, 내용만 가려서 노출한다.
+     */
+    public Page<ReviewResponseDto> getReviewsByTrainer(Long trainerId, Pageable pageable) {
+        Page<Review> reviews = reviewRepository.findByTrainerIdAndStatusIn(
+                trainerId, List.of(ReviewStatus.VISIBLE, ReviewStatus.HIDDEN), pageable);
+        return withReplies(reviews);
+    }
+
+    private Page<ReviewResponseDto> withReplies(Page<Review> reviews) {
         List<Long> reviewIds = reviews.stream().map(Review::getId).toList();
         List<ReviewReply> replies = reviewReplyRepository.findByReviewIdIn(reviewIds);
         Map<Long, ReviewReply> replyMap = replies.stream()
                 .collect(Collectors.toMap(r -> r.getReview().getId(), r -> r));
-        
+
         return reviews.map(review -> {
             ReviewReply reply = replyMap.get(review.getId());
             ReviewReplyResponseDto replyDto = reply != null ? ReviewReplyResponseDto.from(reply) : null;

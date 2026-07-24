@@ -52,6 +52,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -181,7 +182,7 @@ class ReviewServiceTest {
                     .build();
 
             given(reservationRepository.findById(200L)).willReturn(Optional.of(reservation));
-            given(reviewRepository.existsByReservationIdAndStatusNot(200L, ReviewStatus.USER_DELETED)).willReturn(false);
+            given(reviewRepository.findByReservationId(200L)).willReturn(Optional.empty());
             given(programTrainerRepository.findByProgramIdAndAssignmentRole(100L, ProgramTrainer.AssignmentRole.MAIN))
                     .willReturn(Optional.of(pt));
             given(reviewRepository.save(any(Review.class))).willAnswer(inv -> {
@@ -223,8 +224,9 @@ class ReviewServiceTest {
         @Test
         @DisplayName("실패 - 이미 리뷰를 작성한 예약 (중복)")
         void fail_duplicate() {
+            Review existingReview = buildReview(50L); // 기본 상태 VISIBLE
             given(reservationRepository.findById(200L)).willReturn(Optional.of(reservation));
-            given(reviewRepository.existsByReservationIdAndStatusNot(200L, ReviewStatus.USER_DELETED)).willReturn(true);
+            given(reviewRepository.findByReservationId(200L)).willReturn(Optional.of(existingReview));
 
             assertThatThrownBy(() -> reviewService.createReview(200L, 1L, reviewRequest(5, "좋아요")))
                     .isInstanceOf(BusinessRuleException.class)
@@ -235,7 +237,6 @@ class ReviewServiceTest {
         @DisplayName("실패 - 평점 범위 초과 (1~5)")
         void fail_invalidRating() {
             given(reservationRepository.findById(200L)).willReturn(Optional.of(reservation));
-            given(reviewRepository.existsByReservationIdAndStatusNot(200L, ReviewStatus.USER_DELETED)).willReturn(false);
 
             assertThatThrownBy(() -> reviewService.createReview(200L, 1L, reviewRequest(6, "좋아요")))
                     .isInstanceOf(BusinessRuleException.class)
@@ -243,28 +244,21 @@ class ReviewServiceTest {
         }
 
         @Test
-        @DisplayName("성공 - USER_DELETED 상태의 리뷰가 있어도 재작성 가능")
+        @DisplayName("성공 - USER_DELETED 상태의 리뷰가 있으면 새로 만들지 않고 복원해서 재작성")
         void success_rewriteAfterUserDeleted() {
-            ProgramTrainer pt = ProgramTrainer.builder()
-                    .program(program).trainer(trainer)
-                    .assignmentRole(ProgramTrainer.AssignmentRole.MAIN)
-                    .build();
+            Review deletedReview = buildReview(2L);
+            deletedReview.markUserDeleted();
 
             given(reservationRepository.findById(200L)).willReturn(Optional.of(reservation));
-            // USER_DELETED 제외 시 존재하지 않음 → 재작성 허용
-            given(reviewRepository.existsByReservationIdAndStatusNot(200L, ReviewStatus.USER_DELETED)).willReturn(false);
-            given(programTrainerRepository.findByProgramIdAndAssignmentRole(100L, ProgramTrainer.AssignmentRole.MAIN))
-                    .willReturn(Optional.of(pt));
-            given(reviewRepository.save(any(Review.class))).willAnswer(inv -> {
-                Review saved = inv.getArgument(0);
-                ReflectionTestUtils.setField(saved, "id", 2L);
-                return saved;
-            });
+            given(reviewRepository.findByReservationId(200L)).willReturn(Optional.of(deletedReview));
 
             ReviewResponseDto response = reviewService.createReview(200L, 1L, reviewRequest(4, "재작성 리뷰"));
 
             assertThat(response.getRating()).isEqualTo(4);
-            verify(reviewRepository).save(any(Review.class));
+            assertThat(response.getContent()).isEqualTo("재작성 리뷰");
+            assertThat(deletedReview.getStatus()).isEqualTo(ReviewStatus.VISIBLE);
+            // reservation_id unique 제약 때문에 새 행을 insert하면 안 되고, 기존 행을 갱신해야 한다.
+            verify(reviewRepository, never()).save(any(Review.class));
         }
 
         @Test
@@ -283,8 +277,7 @@ class ReviewServiceTest {
             oldReservation.markAttendance(Reservation.AttendanceStatus.ATTENDED);
             
             given(reservationRepository.findById(301L)).willReturn(Optional.of(oldReservation));
-            given(reviewRepository.existsByReservationIdAndStatusNot(301L, ReviewStatus.USER_DELETED)).willReturn(false);
-            
+
             assertThatThrownBy(() -> reviewService.createReview(301L, 1L, reviewRequest(5, "좋아요")))
                     .isInstanceOf(BusinessRuleException.class)
                     .hasMessageContaining("30일 이내에만");
@@ -439,7 +432,7 @@ class ReviewServiceTest {
         void success_withReply() {
             Review review = buildReview(1L);
             Pageable pageable = PageRequest.of(0, 10);
-            given(reviewRepository.findByProgramIdAndStatus(100L, ReviewStatus.VISIBLE, pageable))
+            given(reviewRepository.findByProgramIdAndStatusIn(100L, List.of(ReviewStatus.VISIBLE, ReviewStatus.HIDDEN), pageable))
                     .willReturn(new PageImpl<>(List.of(review)));
 
             ReviewReply reply = buildReply(5L, review, trainer, "답변입니다");
@@ -457,7 +450,7 @@ class ReviewServiceTest {
         void success_withoutReply() {
             Review review = buildReview(1L);
             Pageable pageable = PageRequest.of(0, 10);
-            given(reviewRepository.findByProgramIdAndStatus(100L, ReviewStatus.VISIBLE, pageable))
+            given(reviewRepository.findByProgramIdAndStatusIn(100L, List.of(ReviewStatus.VISIBLE, ReviewStatus.HIDDEN), pageable))
                     .willReturn(new PageImpl<>(List.of(review)));
             given(reviewReplyRepository.findByReviewIdIn(List.of(1L))).willReturn(List.of());
 
@@ -768,7 +761,7 @@ class ReviewServiceTest {
         @Test
         @DisplayName("성공 - 트레이너 평점 집계 (리뷰 존재)")
         void trainerRating_withReviews() {
-            given(reviewRepository.getTrainerRatingSummary(10L)).willReturn(new Object[]{4L, 4.5});
+            given(reviewRepository.getTrainerRatingSummary(10L)).willReturn(List.<Object[]>of(new Object[]{4L, 4.5}));
 
             RatingSummaryResponseDto response = reviewService.getTrainerRating(10L);
 
@@ -779,7 +772,7 @@ class ReviewServiceTest {
         @Test
         @DisplayName("성공 - 트레이너 리뷰가 없으면 평점 0")
         void trainerRating_noReviews() {
-            given(reviewRepository.getTrainerRatingSummary(10L)).willReturn(new Object[]{0L, 0.0});
+            given(reviewRepository.getTrainerRatingSummary(10L)).willReturn(List.<Object[]>of(new Object[]{0L, 0.0}));
 
             RatingSummaryResponseDto response = reviewService.getTrainerRating(10L);
 
@@ -790,7 +783,7 @@ class ReviewServiceTest {
         @Test
         @DisplayName("성공 - 프로그램 평점 집계 (리뷰 존재)")
         void programRating_withReviews() {
-            given(reviewRepository.getProgramRatingSummary(100L)).willReturn(new Object[]{2L, 5.0});
+            given(reviewRepository.getProgramRatingSummary(100L)).willReturn(List.<Object[]>of(new Object[]{2L, 5.0}));
 
             RatingSummaryResponseDto response = reviewService.getProgramRating(100L);
 

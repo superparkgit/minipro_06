@@ -15,6 +15,7 @@ function AppLayout() {
   const { isAuthenticated, isProfileLoaded, name, roles } = useAuthState()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const isAdmin = roles.includes(USER_ROLES.admin)
+  const isTrainer = roles.includes(USER_ROLES.trainer)
 
   useEffect(() => {
     if (!isAuthenticated || isProfileLoaded) return undefined
@@ -64,6 +65,7 @@ function AppLayout() {
             .filter(({ to }) => {
               if (to === '/login') return false
               if (to.startsWith('/admin')) return isAdmin
+              if (to.startsWith('/trainer')) return isTrainer
               return true
             })
             .map(({ to, label }) => <NavLink key={to} to={to}>{label}</NavLink>)}

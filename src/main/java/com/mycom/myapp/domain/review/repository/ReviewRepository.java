@@ -14,10 +14,10 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
-    // USER_DELETED가 아닌 상태의 리뷰가 존재하는지 확인 (재작성 가능 여부 판단용)
-    boolean existsByReservationIdAndStatusNot(Long reservationId, ReviewStatus status);
-
     Optional<Review> findByReservationId(Long reservationId);
+
+    // 예약 목록에서 각 예약에 달린(재작성 가능한 USER_DELETED 상태 제외) 리뷰를 한 번에 조회
+    List<Review> findByReservationIdInAndStatusNot(List<Long> reservationIds, ReviewStatus status);
 
     @EntityGraph(attributePaths = {"reservation", "user", "program", "trainer"})
     Page<Review> findByProgramIdAndStatusIn(Long programId, List<ReviewStatus> statuses, Pageable pageable);

@@ -3,6 +3,8 @@ package com.mycom.myapp.domain.reservation.service;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,9 @@ import com.mycom.myapp.domain.reservation.entity.Reservation;
 import com.mycom.myapp.domain.reservation.entity.Reservation.ReservationStatus;
 import com.mycom.myapp.domain.reservation.entity.Reservation.AttendanceStatus;
 import com.mycom.myapp.domain.reservation.repository.ReservationRepository;
+import com.mycom.myapp.domain.review.entity.Review;
+import com.mycom.myapp.domain.review.entity.ReviewStatus;
+import com.mycom.myapp.domain.review.repository.ReviewRepository;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
 
@@ -38,6 +43,7 @@ public class ReservationService {
     private final ProgramRepository programRepository;
     private final ProgramTrainerRepository programTrainerRepository;
     private final UserRepository userRepository;
+    private final ReviewRepository reviewRepository;
 
     // 예약 신청 (신청 직후에는 PENDING 상태, 트레이너 승인 필요)
     @Transactional
@@ -73,10 +79,23 @@ public class ReservationService {
         return ReservationResponse.from(reservationRepository.save(reservation));
     }
 
-    // 내 예약 목록
+    // 내 예약 목록 (예약별로 이미 작성한 리뷰가 있으면 함께 내려준다 - 재작성 가능한 USER_DELETED는 제외)
     public List<ReservationResponse> getMyReservations(Long userId) {
-        return reservationRepository.findByUserId(userId).stream()
-                .map(ReservationResponse::from)
+        List<Reservation> reservations = reservationRepository.findByUserId(userId);
+
+        List<Long> reservationIds = reservations.stream().map(Reservation::getId).toList();
+        Map<Long, Review> reviewByReservationId = reviewRepository
+                .findByReservationIdInAndStatusNot(reservationIds, ReviewStatus.USER_DELETED).stream()
+                .collect(Collectors.toMap(review -> review.getReservation().getId(), review -> review));
+
+        return reservations.stream()
+                .map(reservation -> {
+                    Review review = reviewByReservationId.get(reservation.getId());
+                    return ReservationResponse.from(reservation,
+                            review != null ? review.getId() : null,
+                            review != null ? review.getRating() : null,
+                            review != null ? review.getContent() : null);
+                })
                 .toList();
     }
 

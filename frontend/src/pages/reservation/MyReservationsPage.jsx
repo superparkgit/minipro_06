@@ -84,12 +84,30 @@ function MyReservationsPage() {
               <span className={`badge ${reservation.status.toLowerCase()}`}>{reservation.status}</span>
               {['PENDING', 'APPROVED'].includes(reservation.status) && !['ATTENDED', 'NO_SHOW'].includes(reservation.attendanceStatus) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}
               {reservation.status === 'APPROVED' && reservation.attendanceStatus === 'ATTENDED' && (
-                <Link
-                  className="button button-primary"
-                  to={`/reviews/write?reservationId=${reservation.id}&programId=${reservation.programId}&programTitle=${encodeURIComponent(reservation.programName)}`}
-                >
-                  리뷰 작성
-                </Link>
+                reservation.reviewId ? (
+                  <Link
+                    className="button button-secondary"
+                    to={`/reviews/${reservation.reviewId}/edit`}
+                    state={{
+                      review: {
+                        id: reservation.reviewId,
+                        rating: reservation.reviewRating,
+                        content: reservation.reviewContent,
+                        programId: reservation.programId,
+                        programTitle: reservation.programName,
+                      },
+                    }}
+                  >
+                    리뷰 확인
+                  </Link>
+                ) : (
+                  <Link
+                    className="button button-primary"
+                    to={`/reviews/write?reservationId=${reservation.id}&programId=${reservation.programId}&programTitle=${encodeURIComponent(reservation.programName)}`}
+                  >
+                    리뷰 작성
+                  </Link>
+                )
               )}
             </div>
           </article>

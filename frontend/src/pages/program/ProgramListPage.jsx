@@ -14,6 +14,7 @@ const formatSchedule = (startAt) => startAt
 function ProgramListPage() {
   const { user } = useCurrentUser()
   const [programs, setPrograms] = useState([])
+  const [statusFilter, setStatusFilter] = useState('OPEN')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -30,6 +31,10 @@ function ProgramListPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const visiblePrograms = statusFilter === 'ALL'
+    ? programs
+    : programs.filter((program) => program.status === statusFilter)
+
   return (
     <>
       <section className="section-heading">
@@ -41,9 +46,33 @@ function ProgramListPage() {
       </section>
       {loading && <p className="notice">프로그램을 불러오는 중입니다.</p>}
       {error && <p className="notice notice-error">{error}</p>}
-      {!loading && programs.length === 0 && <p className="page-card">등록된 프로그램이 없습니다.</p>}
+      {!loading && (
+        <div className="post-tabs list-filter-tabs" aria-label="프로그램 상태 필터">
+          {[
+            ['OPEN', '모집 중'],
+            ['CLOSED', '마감'],
+            ['COMPLETED', '완료'],
+            ['CANCELED', '폐강'],
+            ['ALL', '전체'],
+          ].map(([value, label]) => {
+            const count = value === 'ALL'
+              ? programs.length
+              : programs.filter((item) => item.status === value).length
+            return (
+              <button
+                key={value}
+                className={`tab ${statusFilter === value ? 'active' : ''}`}
+                onClick={() => setStatusFilter(value)}
+              >
+                {label} {count}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {!loading && visiblePrograms.length === 0 && <p className="page-card">해당 상태의 프로그램이 없습니다.</p>}
       <section className="grid program-grid">
-        {programs.map((program) => (
+        {visiblePrograms.map((program) => (
           <Link className="card program-card" key={program.id} to={`/programs/${program.id}`}>
             <div>
               <div className="program-icon">{typeIcon[program.type] ?? '🏃'}</div>

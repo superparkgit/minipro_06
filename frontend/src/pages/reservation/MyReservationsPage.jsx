@@ -25,11 +25,31 @@ const applyUpdates = (items) => {
   return items.map((item) => ({ ...item, ...updates[item.id] }))
 }
 
+const reservationView = (reservation) => {
+  if (reservation.status === 'PENDING') {
+    return { group: 'PENDING', status: '승인 대기', attendance: '확인 전' }
+  }
+  if (reservation.status === 'CANCELED') {
+    return { group: 'CLOSED', status: '예약 취소', attendance: '—' }
+  }
+  if (reservation.status === 'REJECTED') {
+    return { group: 'CLOSED', status: '예약 거절', attendance: '—' }
+  }
+  if (reservation.attendanceStatus === 'ATTENDED') {
+    return { group: 'COMPLETED', status: '이용 완료', attendance: '출석' }
+  }
+  if (reservation.attendanceStatus === 'NO_SHOW') {
+    return { group: 'COMPLETED', status: '이용 완료', attendance: '미출석' }
+  }
+  return { group: 'UPCOMING', status: '예약 예정', attendance: '미정' }
+}
+
 function MyReservationsPage() {
   const { user, loading: userLoading } = useCurrentUser()
   const [reservations, setReservations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [filter, setFilter] = useState('ALL')
 
   useEffect(() => {
     if (userLoading) return
@@ -67,6 +87,10 @@ function MyReservationsPage() {
     }
   }
 
+  const filteredReservations = filter === 'ALL'
+    ? reservations
+    : reservations.filter((item) => reservationView(item).group === filter)
+
   if (userLoading) return <p className="notice">로그인 정보를 확인하는 중입니다.</p>
   if (!user) return <section className="page-card"><h1>로그인이 필요합니다.</h1><p>내 예약을 확인하려면 먼저 로그인해 주세요.</p></section>
 
@@ -76,42 +100,67 @@ function MyReservationsPage() {
       {loading && <p className="notice">예약 목록을 불러오는 중입니다.</p>}
       {error && <p className="notice notice-error">{error}</p>}
       {!loading && reservations.length === 0 && <p className="page-card">예약 내역이 없습니다.</p>}
+      {!loading && reservations.length > 0 && (
+        <div className="post-tabs list-filter-tabs" aria-label="예약 상태 필터">
+          {[
+            ['ALL', '전체'],
+            ['PENDING', '승인 대기'],
+            ['UPCOMING', '예약 예정'],
+            ['COMPLETED', '이용 완료'],
+            ['CLOSED', '취소·거절'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              className={`tab ${filter === value ? 'active' : ''}`}
+              onClick={() => setFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {!loading && reservations.length > 0 && filteredReservations.length === 0 && (
+        <p className="page-card">해당 상태의 예약 내역이 없습니다.</p>
+      )}
       <div className="reservation-list">
-        {reservations.map((reservation) => (
-          <article className="reservation-row" key={reservation.id}>
-            <div><h3>{reservation.programName}</h3><p>출석 상태: {reservation.attendanceStatus}</p></div>
-            <div className="row-actions">
-              <span className={`badge ${reservation.status.toLowerCase()}`}>{reservation.status}</span>
-              {['PENDING', 'APPROVED'].includes(reservation.status) && !['ATTENDED', 'NO_SHOW'].includes(reservation.attendanceStatus) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}
-              {reservation.status === 'APPROVED' && reservation.attendanceStatus === 'ATTENDED' && (
-                reservation.reviewId ? (
-                  <Link
-                    className="button button-secondary"
-                    to={`/reviews/${reservation.reviewId}/edit`}
-                    state={{
-                      review: {
-                        id: reservation.reviewId,
-                        rating: reservation.reviewRating,
-                        content: reservation.reviewContent,
-                        programId: reservation.programId,
-                        programTitle: reservation.programName,
-                      },
-                    }}
-                  >
-                    리뷰 확인
-                  </Link>
-                ) : (
-                  <Link
-                    className="button button-primary"
-                    to={`/reviews/write?reservationId=${reservation.id}&programId=${reservation.programId}&programTitle=${encodeURIComponent(reservation.programName)}`}
-                  >
-                    리뷰 작성
-                  </Link>
-                )
-              )}
-            </div>
-          </article>
-        ))}
+        {filteredReservations.map((reservation) => {
+          const view = reservationView(reservation)
+          return (
+            <article className="reservation-row" key={reservation.id}>
+              <div><h3>{reservation.programName}</h3><p>출석 상태: {view.attendance}</p></div>
+              <div className="row-actions">
+                <span className={`badge ${reservation.status.toLowerCase()}`}>{view.status}</span>
+                {['PENDING', 'APPROVED'].includes(reservation.status) && !['ATTENDED', 'NO_SHOW'].includes(reservation.attendanceStatus) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}
+                {reservation.status === 'APPROVED' && reservation.attendanceStatus === 'ATTENDED' && (
+                  reservation.reviewId ? (
+                    <Link
+                      className="button button-secondary"
+                      to={`/reviews/${reservation.reviewId}/edit`}
+                      state={{
+                        review: {
+                          id: reservation.reviewId,
+                          rating: reservation.reviewRating,
+                          content: reservation.reviewContent,
+                          programId: reservation.programId,
+                          programTitle: reservation.programName,
+                        },
+                      }}
+                    >
+                      리뷰 확인
+                    </Link>
+                  ) : (
+                    <Link
+                      className="button button-primary"
+                      to={`/reviews/write?reservationId=${reservation.id}&programId=${reservation.programId}&programTitle=${encodeURIComponent(reservation.programName)}`}
+                    >
+                      리뷰 작성
+                    </Link>
+                  )
+                )}
+              </div>
+            </article>
+          )
+        })}
       </div>
     </section>
   )

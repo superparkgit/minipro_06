@@ -111,7 +111,7 @@ function TrainerReservationsPage() {
       <div className="reservation-list">
         {applicants.map((applicant) => (
           <article className="reservation-row" key={applicant.id}>
-            <div><h3>{applicant.userName ?? `회원 #${applicant.userId}`}</h3><p>{applicant.programName} · 출석 상태: <span className={applicant.attendanceStatus === 'NO_SHOW' ? 'attendance-no-show' : ''}>{attendanceLabel[applicant.attendanceStatus] ?? applicant.attendanceStatus}</span></p></div>
+            <div><h3>{applicant.userName ?? `회원 #${applicant.userId}`}</h3><p>{applicant.programName} · 출석 상태: <span className={applicant.attendanceStatus === 'ATTENDED' ? 'attendance-attended' : applicant.attendanceStatus === 'NO_SHOW' ? 'attendance-no-show' : ''}>{attendanceLabel[applicant.attendanceStatus] ?? applicant.attendanceStatus}</span></p></div>
             <div className="row-actions">
               <span className={`badge ${applicant.status.toLowerCase()}`}>예약 상태: {reservationStatusLabel(applicant)}</span>
               {applicant.status === 'PENDING' && programStatus === 'OPEN' && <>

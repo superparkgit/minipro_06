@@ -103,6 +103,8 @@ class ReservationServiceTest {
         assertThat(response.status()).isEqualTo(ReservationStatus.PENDING);
         assertThat(response.userName()).isEqualTo("회원");
         assertThat(response.programId()).isEqualTo(100L);
+        assertThat(response.programStartAt()).isEqualTo(program.getStartAt());
+        assertThat(response.programEndAt()).isEqualTo(program.getEndAt());
         verify(reservationRepository).save(any(Reservation.class));
     }
 

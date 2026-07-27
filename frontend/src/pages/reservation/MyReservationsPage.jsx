@@ -25,6 +25,25 @@ const applyUpdates = (items) => {
   return items.map((item) => ({ ...item, ...updates[item.id] }))
 }
 
+const formatSchedule = (startAt, endAt) => {
+  if (!startAt) return ''
+  const dateTime = new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(startAt))
+  const endTime = endAt
+    ? new Intl.DateTimeFormat('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(endAt))
+    : ''
+  return endTime ? `${dateTime} ~ ${endTime}` : dateTime
+}
+
 const reservationView = (reservation) => {
   if (reservation.status === 'PENDING') {
     return { group: 'PENDING', status: '승인 대기', attendance: '확인 전' }
@@ -130,7 +149,11 @@ function MyReservationsPage() {
           const view = reservationView(reservation)
           return (
             <article className="reservation-row" key={reservation.id}>
-              <div><h3>{reservation.programName}</h3><p>출석 상태: <span className={reservation.attendanceStatus === 'NO_SHOW' ? 'attendance-no-show' : ''}>{view.attendance}</span></p></div>
+              <div>
+                <h3>{reservation.programName}</h3>
+                {reservation.programStartAt && <p>수업 일정: {formatSchedule(reservation.programStartAt, reservation.programEndAt)}</p>}
+                <p>출석 상태: <span className={reservation.attendanceStatus === 'ATTENDED' ? 'attendance-attended' : reservation.attendanceStatus === 'NO_SHOW' ? 'attendance-no-show' : ''}>{view.attendance}</span></p>
+              </div>
               <div className="row-actions">
                 <span className={`badge ${reservation.status.toLowerCase()}`}>{view.status}</span>
                 {reservation.programStatus !== 'COMPLETED' && ['PENDING', 'APPROVED'].includes(reservation.status) && !['ATTENDED', 'NO_SHOW'].includes(reservation.attendanceStatus) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}

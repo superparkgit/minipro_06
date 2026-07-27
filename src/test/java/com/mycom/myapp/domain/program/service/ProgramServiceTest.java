@@ -27,6 +27,8 @@ import com.mycom.myapp.domain.program.entity.ProgramTrainer;
 import com.mycom.myapp.domain.program.entity.ProgramTrainer.AssignmentRole;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
 import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
+import com.mycom.myapp.domain.reservation.entity.Reservation.ReservationStatus;
+import com.mycom.myapp.domain.reservation.repository.ReservationRepository;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.repository.UserRepository;
 
@@ -42,6 +44,9 @@ class ProgramServiceTest {
 
     @Mock
     private ProgramTrainerRepository programTrainerRepository;
+
+    @Mock
+    private ReservationRepository reservationRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -166,6 +171,22 @@ class ProgramServiceTest {
 
         assertThatThrownBy(() -> programService.completeProgram(100L, 20L))
                 .isInstanceOf(ResponseStatusException.class);
+        assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.OPEN);
+    }
+
+    @Test
+    @DisplayName("수업 완료 실패 - 처리하지 않은 대기 예약이 남아 있음")
+    void completeProgram_pendingReservationExists() {
+        Program program = program(100L);
+        given(programRepository.findById(100L)).willReturn(Optional.of(program));
+        given(programTrainerRepository.existsByProgramIdAndTrainerIdAndAssignmentRole(
+                100L, 10L, AssignmentRole.MAIN)).willReturn(true);
+        given(reservationRepository.existsByProgramIdAndStatus(100L, ReservationStatus.PENDING))
+                .willReturn(true);
+
+        assertThatThrownBy(() -> programService.completeProgram(100L, 10L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("대기 예약을 먼저 처리");
         assertThat(program.getStatus()).isEqualTo(Program.ProgramStatus.OPEN);
     }
 

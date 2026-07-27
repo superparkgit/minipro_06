@@ -91,6 +91,23 @@ button { cursor: pointer; }
 .reservation-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 22px; border-radius: 18px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 .reservation-row h3 { margin: 0 0 5px; font-size: 18px; }
 .reservation-row p { margin: 0; color: #6e6e73; }
+.attendance-attended,
+.attendance-no-show {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.attendance-attended {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.attendance-no-show {
+  color: #b42318;
+  background: #fee2e2;
+}
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .notice { margin-top: 16px; padding: 14px 16px; border-radius: 12px; color: #137333; background: #e6f4ea; }
 .notice-error { color: #b42318; background: #fff0f1; }

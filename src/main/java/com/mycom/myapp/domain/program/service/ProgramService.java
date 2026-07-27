@@ -17,6 +17,8 @@ import com.mycom.myapp.domain.program.entity.ProgramTrainer;
 import com.mycom.myapp.domain.program.entity.ProgramTrainer.AssignmentRole;
 import com.mycom.myapp.domain.program.repository.ProgramRepository;
 import com.mycom.myapp.domain.program.repository.ProgramTrainerRepository;
+import com.mycom.myapp.domain.reservation.entity.Reservation.ReservationStatus;
+import com.mycom.myapp.domain.reservation.repository.ReservationRepository;
 import com.mycom.myapp.domain.user.entity.User;
 import com.mycom.myapp.domain.user.entity.Role;
 import com.mycom.myapp.domain.user.entity.UserRole;
@@ -31,6 +33,7 @@ public class ProgramService {
 
     private final ProgramRepository programRepository;
     private final ProgramTrainerRepository programTrainerRepository;
+    private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
 
     // 프로그램 목록 조회 (타입/날짜 필터)
@@ -118,6 +121,9 @@ public class ProgramService {
 
         if (program.getStatus() == ProgramStatus.CANCELED) {
             throw badRequest("폐강된 수업은 완료 처리할 수 없습니다.");
+        }
+        if (reservationRepository.existsByProgramIdAndStatus(id, ReservationStatus.PENDING)) {
+            throw badRequest("승인 또는 거절하지 않은 예약이 있습니다. 대기 예약을 먼저 처리해 주세요.");
         }
         program.complete();
     }

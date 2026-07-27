@@ -26,6 +26,20 @@ const applyUpdates = (items) => {
   return items.map((item) => ({ ...item, ...updates[item.id] }))
 }
 
+const attendanceLabel = {
+  NOT_CHECKED: '미처리',
+  ATTENDED: '출석',
+  NO_SHOW: '결석',
+}
+
+const reservationStatusLabel = (reservation) => {
+  if (reservation.status === 'APPROVED') return '승인 완료'
+  if (reservation.status === 'PENDING') return '승인 대기'
+  if (reservation.status === 'REJECTED') return '예약 거절'
+  if (reservation.status === 'CANCELED') return '예약 취소'
+  return reservation.status
+}
+
 function TrainerReservationsPage() {
   const { programId } = useParams()
   const { user, loading: userLoading } = useCurrentUser()
@@ -97,14 +111,21 @@ function TrainerReservationsPage() {
       <div className="reservation-list">
         {applicants.map((applicant) => (
           <article className="reservation-row" key={applicant.id}>
-            <div><h3>{applicant.userName ?? `회원 #${applicant.userId}`}</h3><p>{applicant.programName} · 출석 {applicant.attendanceStatus}</p></div>
+            <div><h3>{applicant.userName ?? `회원 #${applicant.userId}`}</h3><p>{applicant.programName} · 출석 상태: <span className={applicant.attendanceStatus === 'ATTENDED' ? 'attendance-attended' : applicant.attendanceStatus === 'NO_SHOW' ? 'attendance-no-show' : ''}>{attendanceLabel[applicant.attendanceStatus] ?? applicant.attendanceStatus}</span></p></div>
             <div className="row-actions">
-              <span className={`badge ${applicant.status.toLowerCase()}`}>{applicant.status}</span>
-              {applicant.status === 'PENDING' && <><button className="button button-primary" onClick={() => runAction(applicant.id, 'APPROVE', approveReservation)}>승인</button><button className="button button-danger" onClick={() => runAction(applicant.id, 'REJECT', rejectReservation)}>거절</button></>}
+              <span className={`badge ${applicant.status.toLowerCase()}`}>예약 상태: {reservationStatusLabel(applicant)}</span>
+              {applicant.status === 'PENDING' && programStatus === 'OPEN' && <>
+                <button className="button button-primary" onClick={() => runAction(applicant.id, 'APPROVE', approveReservation)}>승인</button>
+                <button className="button button-danger" onClick={() => runAction(applicant.id, 'REJECT', rejectReservation)}>거절</button>
+              </>}
+              {applicant.status === 'PENDING' && programStatus === 'COMPLETED' &&
+                <button className="button button-danger" onClick={() => runAction(applicant.id, 'REJECT', rejectReservation)}>대기 예약 거절</button>}
               {programStatus === 'COMPLETED' && applicant.status === 'APPROVED' && applicant.attendanceStatus === 'NOT_CHECKED' && <>
                 <button className="button button-secondary" onClick={() => runAction(applicant.id, 'ATTENDED', (id) => updateAttendance(id, { attendanceStatus: 'ATTENDED' }))}>출석</button>
                 <button className="button button-danger" onClick={() => runAction(applicant.id, 'NO_SHOW', (id) => updateAttendance(id, { attendanceStatus: 'NO_SHOW' }))}>결석</button>
               </>}
+              {programStatus === 'COMPLETED' && applicant.status === 'APPROVED' && applicant.attendanceStatus === 'NO_SHOW' &&
+                <button className="button button-secondary" onClick={() => runAction(applicant.id, 'ATTENDED', (id) => updateAttendance(id, { attendanceStatus: 'ATTENDED' }))}>출석으로 수정</button>}
             </div>
           </article>
         ))}

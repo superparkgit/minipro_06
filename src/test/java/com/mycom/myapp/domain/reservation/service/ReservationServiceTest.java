@@ -103,6 +103,8 @@ class ReservationServiceTest {
         assertThat(response.status()).isEqualTo(ReservationStatus.PENDING);
         assertThat(response.userName()).isEqualTo("회원");
         assertThat(response.programId()).isEqualTo(100L);
+        assertThat(response.programStartAt()).isEqualTo(program.getStartAt());
+        assertThat(response.programEndAt()).isEqualTo(program.getEndAt());
         verify(reservationRepository).save(any(Reservation.class));
     }
 
@@ -177,6 +179,21 @@ class ReservationServiceTest {
 
         assertThatThrownBy(() -> reservationService.cancelReservation(500L, 1L))
                 .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    @DisplayName("예약 취소 실패 - 완료된 수업의 출석 미처리 승인 예약")
+    void cancelReservation_completedProgram() {
+        Program program = program(100L, user(10L, "트레이너"), 5);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.cancelReservation(500L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("완료된 수업의 예약은 취소할 수 없습니다.");
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.APPROVED);
     }
 
     @Test
@@ -309,6 +326,23 @@ class ReservationServiceTest {
         assertThat(response.attendanceStatus()).isEqualTo(AttendanceStatus.ATTENDED);
     }
 
+    @Test
+    @DisplayName("출석 수정 성공 - 결석 처리된 승인 예약을 출석으로 정정")
+    void markAttendance_noShowToAttended() {
+        Program program = program(100L, user(10L, "트레이너"), 1);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        reservation.approve();
+        reservation.markAttendance(AttendanceStatus.NO_SHOW);
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        ReservationResponse response = reservationService.markAttendance(
+                500L, 10L, new AttendanceRequest(AttendanceStatus.ATTENDED));
+
+        assertThat(response.attendanceStatus()).isEqualTo(AttendanceStatus.ATTENDED);
+    }
+
     // ===== 예약 거절 =====
 
     @Test
@@ -323,6 +357,21 @@ class ReservationServiceTest {
 
         assertThat(response.status()).isEqualTo(ReservationStatus.REJECTED);
     }
+
+    @Test
+    @DisplayName("예약 거절 성공 - 이미 완료된 수업의 남은 대기 예약 정리")
+    void rejectReservation_completedProgram() {
+        Program program = program(100L, user(10L, "트레이너"), 5);
+        program.complete();
+        Reservation reservation = reservation(500L, user(1L, "회원"), program);
+        given(reservationRepository.findById(500L)).willReturn(Optional.of(reservation));
+        given(programTrainerRepository.existsByProgramIdAndTrainerId(100L, 10L)).willReturn(true);
+
+        ReservationResponse response = reservationService.rejectReservation(500L, 10L);
+
+        assertThat(response.status()).isEqualTo(ReservationStatus.REJECTED);
+    }
+
     @Test
     @DisplayName("예약 신청 실패 - 폐강된 프로그램은 예약할 수 없음")
     void createReservation_canceledProgram() {

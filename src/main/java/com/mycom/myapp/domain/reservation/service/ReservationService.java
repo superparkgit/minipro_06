@@ -112,6 +112,9 @@ public class ReservationService {
                 && reservation.getStatus() != ReservationStatus.APPROVED) {
             throw badRequest("취소할 수 없는 예약 상태입니다.");
         }
+        if (reservation.getProgram().getStatus() == ProgramStatus.COMPLETED) {
+            throw badRequest("완료된 수업의 예약은 취소할 수 없습니다.");
+        }
         if (reservation.getAttendanceStatus() == AttendanceStatus.ATTENDED
                 || reservation.getAttendanceStatus() == AttendanceStatus.NO_SHOW) {
             throw badRequest("출석 처리된 예약은 취소할 수 없습니다.");
@@ -122,7 +125,7 @@ public class ReservationService {
     // 예약 승인 (TRAINER, 본인 프로그램만)
     @Transactional
     public ReservationResponse approveReservation(Long reservationId, Long trainerId) {
-        Reservation reservation = getPendingReservationOfTrainer(reservationId, trainerId);
+        Reservation reservation = getPendingReservationOfTrainer(reservationId, trainerId, false);
 
         // 정원 체크 (승인 시점에 다시 확인)
         long approvedCount = reservationRepository.countByProgramIdAndStatus(
@@ -138,13 +141,16 @@ public class ReservationService {
     // 예약 거절 (TRAINER, 본인 프로그램만)
     @Transactional
     public ReservationResponse rejectReservation(Long reservationId, Long trainerId) {
-        Reservation reservation = getPendingReservationOfTrainer(reservationId, trainerId);
+        // 완료 전에 처리하지 못한 기존 PENDING 예약을 정리할 수 있도록
+        // 완료된 프로그램에서도 거절은 허용한다.
+        Reservation reservation = getPendingReservationOfTrainer(reservationId, trainerId, true);
         reservation.reject();
         return ReservationResponse.from(reservation);
     }
 
     // 공통 검증: 예약 존재 + 본인(트레이너) 프로그램 + PENDING 상태
-    private Reservation getPendingReservationOfTrainer(Long reservationId, Long trainerId) {
+    private Reservation getPendingReservationOfTrainer(
+            Long reservationId, Long trainerId, boolean allowCompletedProgram) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> notFound("예약을 찾을 수 없습니다."));
 
@@ -152,9 +158,10 @@ public class ReservationService {
                 reservation.getProgram().getId(), trainerId)) {
             throw forbidden("담당 트레이너만 처리할 수 있습니다.");
         }
-        // 폐강·종료된 수업의 대기 예약은 승인/거절 대상이 아니다
+        // 폐강된 수업은 처리할 수 없고, 완료된 수업은 기존 대기 예약의 거절만 허용한다.
         ProgramStatus programStatus = reservation.getProgram().getStatus();
-        if (programStatus == ProgramStatus.CANCELED || programStatus == ProgramStatus.COMPLETED) {
+        if (programStatus == ProgramStatus.CANCELED
+                || (programStatus == ProgramStatus.COMPLETED && !allowCompletedProgram)) {
             throw badRequest("종료되었거나 폐강된 수업입니다.");
         }
         if (!reservation.isPending()) {
@@ -195,7 +202,6 @@ public class ReservationService {
         if (request.attendanceStatus() == AttendanceStatus.NOT_CHECKED) {
             throw badRequest("ATTENDED 또는 NO_SHOW만 처리할 수 있습니다.");
         }
-
         reservation.markAttendance(request.attendanceStatus());
         return ReservationResponse.from(reservation);
     }

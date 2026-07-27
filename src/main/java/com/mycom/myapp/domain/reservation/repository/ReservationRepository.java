@@ -29,6 +29,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     // 현재 예약 인원 수 (정원 체크용 - 승인된 예약 기준)
     long countByProgramIdAndStatus(Long programId, ReservationStatus status);
 
+    // 프로그램 완료 전 아직 처리하지 않은 예약이 남아 있는지 확인
+    boolean existsByProgramIdAndStatus(Long programId, ReservationStatus status);
+
     // ===== 통계 쿼리 =====
 
     /**

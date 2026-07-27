@@ -5,9 +5,9 @@ import { getApiErrorMessage } from '../../api/apiError'
 import { useCurrentUser } from '../../hooks/useCurrentUser'
 
 const sampleReservations = [
-  { id: 1, programId: 1, programName: '초급 웨이트 트레이닝', status: 'APPROVED', attendanceStatus: 'NOT_CHECKED' },
-  { id: 2, programId: 3, programName: '모닝 요가', status: 'PENDING', attendanceStatus: 'NOT_CHECKED' },
-  { id: 3, programId: 5, programName: '코어 강화 클래스', status: 'APPROVED', attendanceStatus: 'ATTENDED' },
+  { id: 1, programId: 1, programName: '초급 웨이트 트레이닝', status: 'APPROVED', attendanceStatus: 'NOT_CHECKED', programStatus: 'OPEN' },
+  { id: 2, programId: 3, programName: '모닝 요가', status: 'PENDING', attendanceStatus: 'NOT_CHECKED', programStatus: 'OPEN' },
+  { id: 3, programId: 5, programName: '코어 강화 클래스', status: 'APPROVED', attendanceStatus: 'ATTENDED', programStatus: 'COMPLETED' },
 ]
 
 const readDemoReservations = () => {
@@ -39,9 +39,12 @@ const reservationView = (reservation) => {
     return { group: 'COMPLETED', status: '이용 완료', attendance: '출석' }
   }
   if (reservation.attendanceStatus === 'NO_SHOW') {
-    return { group: 'COMPLETED', status: '이용 완료', attendance: '미출석' }
+    return { group: 'COMPLETED', status: '이용 완료', attendance: '결석' }
   }
-  return { group: 'UPCOMING', status: '예약 예정', attendance: '미정' }
+  if (reservation.programStatus === 'COMPLETED') {
+    return { group: 'COMPLETED', status: '수업 완료·출석 확인 중', attendance: '확인 전' }
+  }
+  return { group: 'UPCOMING', status: '이용 예정', attendance: '미정' }
 }
 
 function MyReservationsPage() {
@@ -105,7 +108,7 @@ function MyReservationsPage() {
           {[
             ['ALL', '전체'],
             ['PENDING', '승인 대기'],
-            ['UPCOMING', '예약 예정'],
+            ['UPCOMING', '이용 예정'],
             ['COMPLETED', '이용 완료'],
             ['CLOSED', '취소·거절'],
           ].map(([value, label]) => (
@@ -127,10 +130,10 @@ function MyReservationsPage() {
           const view = reservationView(reservation)
           return (
             <article className="reservation-row" key={reservation.id}>
-              <div><h3>{reservation.programName}</h3><p>출석 상태: {view.attendance}</p></div>
+              <div><h3>{reservation.programName}</h3><p>출석 상태: <span className={reservation.attendanceStatus === 'NO_SHOW' ? 'attendance-no-show' : ''}>{view.attendance}</span></p></div>
               <div className="row-actions">
                 <span className={`badge ${reservation.status.toLowerCase()}`}>{view.status}</span>
-                {['PENDING', 'APPROVED'].includes(reservation.status) && !['ATTENDED', 'NO_SHOW'].includes(reservation.attendanceStatus) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}
+                {reservation.programStatus !== 'COMPLETED' && ['PENDING', 'APPROVED'].includes(reservation.status) && !['ATTENDED', 'NO_SHOW'].includes(reservation.attendanceStatus) && <button className="button button-danger" onClick={() => cancel(reservation.id)}>취소</button>}
                 {reservation.status === 'APPROVED' && reservation.attendanceStatus === 'ATTENDED' && (
                   reservation.reviewId ? (
                     <Link

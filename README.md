@@ -1,203 +1,140 @@
-# Fitness Reserve
+<div align="center">
 
-트레이너의 운동 프로그램 운영과 회원의 예약·출석·리뷰·커뮤니티 활동을 한곳에서 관리하는 팀 프로젝트입니다. Spring Boot 기반 REST API와 React 웹 클라이언트로 구성했습니다.
+<img src="assets/banner.svg" width="100%" alt="Fitness Reserve — 운동의 시작부터, 함께한 수업의 기록까지">
 
-> 교육 과정 미니 프로젝트 · 3인 팀 · Backend/Frontend 통합
+<br>
 
-[주요 기능](#주요-기능) · [아키텍처](#아키텍처) · [팀 구현](#팀-구현-상세) · [실행 방법](#로컬-실행) · [테스트](#테스트)
+**트레이너의 수업 운영과 회원의 운동 경험을 연결하는 피트니스 예약 서비스**
 
-## 프로젝트 배경
+프로그램 개설부터 예약 승인, 출석, 리뷰까지 한곳에서 관리합니다.
 
-운동 프로그램의 개설부터 예약 승인, 출석, 리뷰까지 이어지는 흐름을 하나의 서비스에서 처리하는 것을 목표로 했습니다. 단순 CRUD에 그치지 않고 사용자 역할과 수업 상태에 따라 달라지는 예약 규칙을 서비스 계층에 구현하고 테스트했습니다.
+![Java](https://img.shields.io/badge/Java_21-007396?style=flat-square&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot_4.1-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+![React](https://img.shields.io/badge/React_19-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite_8-646CFF?style=flat-square&logo=vite&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white)
 
-### 핵심 사용자 흐름
+교육 과정 미니 프로젝트 · 3인 팀 · 백엔드 / 프론트엔드 통합
 
-1. 관리자가 회원 역할을 관리합니다.
-2. 트레이너가 운동 프로그램을 개설하고 보조 트레이너를 배정합니다.
-3. 회원이 프로그램을 조회하고 예약을 신청하거나 취소합니다.
-4. 트레이너가 예약을 승인·거절하고 출석을 처리합니다.
-5. 완료된 예약을 바탕으로 회원이 리뷰를 작성합니다.
+[프로젝트 소개](#프로젝트-소개) · [서비스 화면](#서비스-화면) · [주요 기능](#주요-기능) · [핵심 설계](#핵심-설계) · [팀 구성](#팀-구성) · [실행 방법](#실행-방법)
+
+</div>
+
+<br>
+
+## 프로젝트 소개
+
+**Fitness Reserve**는 회원·트레이너·관리자의 역할에 맞춰 운동 프로그램을 운영하는 웹 서비스입니다.
+
+단순한 예약 등록에서 나아가 **프로그램 모집 상태, 수업 정원, 담당 트레이너, 회원의 참여 기록**을 함께 확인하도록 구현했습니다. 회원의 수업 참여는 리뷰로, 트레이너의 수업 운영은 예약 통계로 이어집니다.
+
+| 회원 | 트레이너 | 관리자 |
+| :---: | :---: | :---: |
+| **나에게 맞는 수업 찾기** | **수업과 참여자 관리하기** | **회원과 리뷰 관리하기** |
+| 프로그램 탐색 · 예약 신청 | 프로그램 개설 · 담당자 배정 | 회원 목록 · 역할 변경 |
+| 내 예약 확인 · 취소 | 예약 승인·거절 · 출석 처리 | 신고된 리뷰 심사 |
+| 수업 리뷰 · 커뮤니티 | 리뷰 답변 · 예약 통계 | 리뷰 노출 관리 |
+
+## 서비스 화면
+
+### 첫 화면
+
+<img src="assets/screen-home.jpg" width="100%" alt="Fitness Reserve 실제 프론트엔드 홈 화면">
+
+프로그램 탐색으로 이어지는 서비스 진입 화면입니다.
+
+<table>
+<tr>
+<th width="50%">로그인</th>
+<th width="50%">회원가입</th>
+</tr>
+<tr>
+<td valign="top"><img src="assets/screen-login.jpg" width="100%" alt="Fitness Reserve 로그인 화면"></td>
+<td valign="top"><img src="assets/screen-signup.jpg" width="100%" alt="Fitness Reserve 회원가입 화면"></td>
+</tr>
+<tr>
+<td align="center">이메일과 비밀번호로 로그인</td>
+<td align="center">입력 조건을 안내하는 가입 화면</td>
+</tr>
+</table>
+
+> 저장소의 프론트엔드를 로컬에서 실행해 직접 캡처한 화면입니다. 백엔드 연결 및 로그인·가입 성공 동작을 검증한 자료는 아닙니다.
 
 ## 주요 기능
 
-- JWT Access/Refresh Token 기반 회원가입·로그인·로그아웃
-- 관리자 회원 조회 및 역할 관리
-- 운동 프로그램 등록·수정·조회와 담당 트레이너 배정
-- 회원 예약·취소와 트레이너 출석 처리
-- 프로그램 및 트레이너별 예약 통계
-- 게시글·댓글 커뮤니티
-- 리뷰·답변·신고와 관리자 검토
+| 영역 | 핵심 기능 | 연결되는 경험 |
+| --- | --- | --- |
+| **인증·회원** | 회원가입, 로그인, 토큰 재발급, 로그아웃 | 사용자 역할에 맞는 기능 이용 |
+| **프로그램** | 프로그램 등록·수정·조회, 주·보조 트레이너 배정 | 수업 탐색부터 운영까지 |
+| **예약·출석** | 신청·승인·거절·취소, 출석·결석 처리 | 신청 내역을 실제 참여 기록으로 연결 |
+| **운영 통계** | 인기 프로그램, 트레이너별 월간 승인 건수 | 프로그램 운영 현황 확인 |
+| **커뮤니티** | 게시글·댓글 작성·수정·삭제, 페이지네이션 | 회원 간 운동 경험 공유 |
+| **리뷰·심사** | 수업 리뷰, 트레이너 답변, 신고·관리자 심사, 평점 집계 | 참여 후기와 후속 관리 |
+
+## 핵심 설계
+
+### 역할 확인에서 담당 관계 확인까지
+
+Spring Security와 JWT로 인증 및 역할별 API 접근을 제어합니다. 예약 승인과 출석 처리에서는 트레이너 역할에 더해 **해당 프로그램의 담당자인지**를 확인합니다.
+
+### 예약과 출석을 서로 다른 상태로 관리
+
+| 구분 | 관리하는 상태 | 적용한 규칙 |
+| --- | --- | --- |
+| **예약** | 대기 · 승인 · 거절 · 취소 | 신청·승인 시 정원 확인, 중복 신청 제한 |
+| **출석** | 미확인 · 출석 · 결석 | 종료된 수업의 승인 예약만 출석 처리 |
+| **취소** | 대기·승인 예약에서 요청 | 본인 확인, 수업 완료·출석 처리 후 취소 제한 |
+
+예약 상태와 참여 여부를 분리해 **승인된 예약**과 **실제로 출석한 예약**을 구분합니다. 리뷰 작성 시에는 예약자 본인과 참여 기록을 확인합니다.
+
+### 도메인별 책임과 협업 범위 분리
+
+백엔드는 기능별 도메인 안에서 Controller → Service → Repository 계층으로 구성했습니다. 프론트엔드도 같은 도메인 단위로 페이지와 API 모듈을 분리했습니다.
+
+| 계층 | 역할 |
+| --- | --- |
+| **React · Vite** | 기능별 화면, 인증 상태 관리, API 요청 |
+| **Spring Security · JWT** | 요청 인증, 역할 기반 접근 제어 |
+| **Controller · Service** | 요청 처리, 담당 관계와 비즈니스 규칙 확인 |
+| **Repository · MySQL** | 도메인 데이터 저장과 조회 |
+| **H2 · Test** | 백엔드 테스트용 데이터베이스 |
 
 ## 기술 스택
 
-| 영역 | 기술 |
+| 영역 | 사용 기술 |
 | --- | --- |
-| Backend | Java 21, Spring Boot 4.1, Spring MVC, Spring Data JPA, Spring Security |
-| Database | MySQL, H2(test) |
-| Authentication | JWT (`jjwt`) |
-| Frontend | React, Vite, Axios |
-| Test | JUnit 5, Spring Security Test |
-| Collaboration | Git, GitHub branch/PR workflow |
+| **Backend** | Java 21 · Spring Boot 4.1 · Spring MVC · Spring Data JPA |
+| **Authentication** | Spring Security · JWT · jjwt |
+| **Frontend** | React 19 · Vite 8 · React Router · Axios |
+| **Database** | MySQL · H2(테스트) |
+| **Test** | JUnit · Spring Security Test |
+| **Collaboration** | Git · GitHub · 기능별 브랜치 · Pull Request |
 
-## 아키텍처
+## 팀 구성
 
-```mermaid
-flowchart TB
-    subgraph Client["Client"]
-        Member["회원"]
-        Trainer["트레이너"]
-        Admin["관리자"]
-        Web["React · Vite<br/>도메인별 Page / API Module"]
-        Member & Trainer & Admin --> Web
-    end
+**담당 도메인의 API·화면·테스트를 함께 구현했습니다.**
 
-    subgraph Server["Spring Boot REST API"]
-        Security["Spring Security · JWT<br/>인증 / 역할 기반 인가"]
-
-        subgraph Domains["Domain Modules"]
-            Auth["Auth · User"]
-            Program["Program<br/>프로그램 · 담당 트레이너"]
-            Reservation["Reservation<br/>예약 · 출석 · 통계"]
-            Community["Post · Comment<br/>커뮤니티"]
-            Review["Review<br/>리뷰 · 답변 · 신고"]
-        end
-
-        Exception["Global Exception Handler"]
-        Jpa["Spring Data JPA"]
-    end
-
-    Web -->|"REST / JSON"| Security
-    Security --> Auth
-    Security --> Program
-    Security --> Reservation
-    Security --> Community
-    Security --> Review
-
-    Program -->|"프로그램 상태 · 정원"| Reservation
-    Reservation -->|"출석 완료 예약"| Review
-    Auth -->|"사용자 · 역할"| Program
-    Auth -->|"사용자 · 역할"| Reservation
-
-    Auth & Program & Reservation & Community & Review --> Jpa
-    Domains -. "예외 표준화" .-> Exception
-    Jpa --> MySQL[("MySQL")]
-    Jpa --> H2[("H2 · Test")]
-
-    classDef actor fill:#F8FAFC,stroke:#64748B,color:#0F172A;
-    classDef client fill:#E0F2FE,stroke:#0284C7,color:#0C4A6E;
-    classDef security fill:#FEF3C7,stroke:#D97706,color:#78350F;
-    classDef domain fill:#ECFDF5,stroke:#059669,color:#064E3B;
-    classDef infra fill:#F3E8FF,stroke:#9333EA,color:#581C87;
-    class Member,Trainer,Admin actor;
-    class Web client;
-    class Security security;
-    class Auth,Program,Reservation,Community,Review domain;
-    class Exception,Jpa,MySQL,H2 infra;
-```
-
-백엔드는 기능 중심의 도메인 모듈로 나누고 각 모듈 내부를 Controller–Service–Repository 계층으로 구성했습니다. 프론트엔드도 같은 도메인 단위로 페이지와 API 모듈을 분리해 팀원이 동시에 작업할 때 충돌 범위를 줄였습니다. 예약 도메인은 프로그램의 상태·정원과 연결되고, 출석이 완료된 예약만 리뷰로 이어지도록 서비스 계층에서 규칙을 검증합니다.
-
-### 핵심 예약 흐름
-
-```mermaid
-stateDiagram-v2
-    [*] --> PENDING: 회원 예약 신청
-    PENDING --> APPROVED: 트레이너 승인
-    PENDING --> REJECTED: 트레이너 거절
-    PENDING --> CANCELED: 회원 취소
-    APPROVED --> CANCELED: 수업·출석 처리 전 취소
-    APPROVED --> ATTENDED: 수업 완료 후 출석
-    APPROVED --> NO_SHOW: 수업 완료 후 결석
-    ATTENDED --> REVIEW: 리뷰 작성 가능
-    REJECTED --> [*]
-    CANCELED --> [*]
-    NO_SHOW --> [*]
-    REVIEW --> [*]
-```
-
-## 팀 구성과 역할
-
-역할은 저장소의 커밋 이력과 팀 작업 문서를 기준으로 정리했습니다.
-
-| 팀원 | 담당 영역 | 주요 작업 |
+| 팀원 | 담당 도메인 | 주요 구현 |
 | --- | --- | --- |
-| 창민 (`H0ng`) | 인증·회원·관리자 | JWT 인증 필터, 회원가입·로그인·토큰 재발급·로그아웃, 회원 역할 관리, Spring Security 접근 제어, 인증 및 관리자 서비스 테스트, 인증·관리자 화면 |
-| 박서희 (`superparkgit`) | 프로그램·예약 | 프로그램과 담당 트레이너 관리, 예약·취소·출석, 예약 통계, 상태별 비즈니스 규칙, 프로그램·예약 서비스 테스트, 프로그램·예약 화면 |
-| 용재 (`YJ720`) | 커뮤니티·리뷰 | 게시글·댓글, 리뷰 작성·답변·신고·심사·평점, 관련 서비스 테스트와 화면, 게시글·리뷰 조회의 N+1 개선 |
+| **창민** · [H0ng](https://github.com/H0ng) | 인증 · 회원 · 관리자 | JWT 인증·토큰 관리, 회원 역할 관리, 공통 예외·접근 제어, 인증·관리자 화면과 테스트 |
+| **박서희** · [superparkgit](https://github.com/superparkgit) | 프로그램 · 예약 | 프로그램·담당자 관리, 예약·출석·통계, 관련 화면·테스트, 프론트 공통 구조와 도메인별 작업 분리 |
+| **용재** · [YJ720](https://github.com/YJ720) | 커뮤니티 · 리뷰 | 게시글·댓글, 리뷰·답변·신고·심사·평점, N+1 조회 개선, 관련 화면과 테스트 |
 
-## 팀 구현 상세
+기능별 브랜치와 Pull Request로 작업을 통합하고, 공통 보안 설정·예외 응답·도메인 간 API 계약을 함께 조정했습니다.
 
-Git 커밋, 테스트 코드와 팀 작업 문서를 기준으로 각 담당 영역을 정리했습니다.
+## 실행 방법
 
-### 인증·회원·관리자 — 창민 (`H0ng`)
+<details>
+<summary><b>로컬 실행 안내 펼치기</b></summary>
 
-- JWT 발급·검증과 인증 필터, Spring Security 접근 제어 구성
-- 회원가입·로그인·Access Token 재발급·로그아웃 구현
-- Refresh Token 저장과 인증 사용자 정보 조회 구현
-- 관리자 회원 목록 조회 및 역할 변경 기능 구현
-- 인증·관리자 서비스 테스트와 로그인·회원가입·관리자 화면 구현
-- 공통 예외 응답과 이메일·입력값 검증 정리
+### 준비
 
-### 프로그램·예약 — 박서희 (`superparkgit`)
+JDK 21, Vite 8이 지원하는 Node.js 환경, MySQL을 준비합니다.
 
-- 프로그램 CRUD와 주·보조 트레이너 배정 기능 구현
-- 예약 신청·승인·거절·취소와 출석 처리 구현
-- 프로그램 상태·정원·출석 여부에 따른 예약 비즈니스 규칙 적용
-- 프로그램 및 트레이너별 예약 통계 API 구현
-- 프로그램·예약 서비스 단위 테스트와 관련 React 화면 구현
-- 트레이너 조회 API 및 담당별 프론트엔드 작업 구조 정리
-
-### 커뮤니티·리뷰 — 용재 (`YJ720`)
-
-- 게시글 CRUD·조회수와 댓글 CRUD·페이지네이션 구현
-- 예약 기반 리뷰 작성·수정·삭제와 트레이너 답변 구현
-- 리뷰 신고·관리자 심사·노출 상태 및 평점 집계 구현
-- 게시글·댓글·리뷰 서비스 테스트와 관련 React 화면 구현
-- 게시글·댓글·프로그램 조회의 N+1 문제 개선
-- 댓글 일괄 삭제, 권한 검증과 예외 처리 보강
-
-### 공통 협업
-
-- 기능 브랜치와 Pull Request를 사용해 담당 도메인을 `main`에 통합했습니다.
-- 공통 예외 처리, Security 권한 규칙과 도메인 간 API 계약을 함께 조정했습니다.
-- 프론트엔드 페이지·API 모듈을 도메인별로 나눠 병합 충돌 범위를 줄였습니다.
-- H2 기반 서비스 테스트와 MySQL 개발 환경을 분리해 각 기능을 검증했습니다.
-
-## 구현하며 해결한 문제
-
-- 인증·인가: JWT 인증과 역할별 API 접근 규칙을 공통 보안 계층에 적용했습니다.
-- 예약 상태: 신청·승인·거절·취소·출석 상태 전이를 서비스 계층에서 검증했습니다.
-- 도메인 연결: 완료·출석한 예약만 리뷰로 이어지도록 프로그램·예약·리뷰 조건을 연결했습니다.
-- 조회 성능: 게시글·댓글·프로그램 조회 과정의 N+1 쿼리와 불필요한 반복 조회를 줄였습니다.
-- 협업 충돌: 프론트엔드 라우팅, 페이지와 API 모듈의 담당 범위를 문서화했습니다.
-
-## 구조
-
-```text
-src/main/java/com/mycom/myapp/domain
-├── auth          # 인증과 Refresh Token
-├── security      # Spring Security와 JWT
-├── user          # 회원과 역할
-├── program       # 운동 프로그램과 담당 트레이너
-├── reservation   # 예약·출석·통계
-├── post/comment  # 커뮤니티
-└── review        # 리뷰·답변·신고
-
-frontend/src
-├── api            # 도메인별 API 모듈
-├── auth           # 브라우저 인증 상태
-├── pages          # 기능별 화면
-├── routes         # 라우팅
-└── components     # 공통 UI
+```bash
+git clone https://github.com/superparkgit/minipro_06.git
+cd minipro_06
 ```
-
-## 로컬 실행
-
-### 1. 준비
-
-- JDK 21
-- Node.js 20 이상
-- MySQL 8
 
 MySQL에 데이터베이스를 생성합니다.
 
@@ -205,79 +142,58 @@ MySQL에 데이터베이스를 생성합니다.
 CREATE DATABASE jpa_fitness;
 ```
 
-### 2. 환경변수
+### 백엔드
 
-실제 비밀번호와 JWT 서명 키는 저장소에 커밋하지 않습니다.
+로컬 접속 정보와 JWT 서명 키를 설정합니다. 실제 비밀번호와 키는 커밋하지 않습니다.
 
 ```bash
-export DB_URL='jdbc:mysql://localhost:3306/jpa_fitness'
-export DB_USERNAME='ureca'
-export DB_PASSWORD='your-local-database-password'
+export SPRING_DATASOURCE_URL='jdbc:mysql://localhost:3306/jpa_fitness'
+export SPRING_DATASOURCE_USERNAME='your-local-db-user'
+export SPRING_DATASOURCE_PASSWORD='your-local-db-password'
 export JWT_SECRET='replace-with-a-random-secret-at-least-32-bytes-long'
-```
 
-선택적으로 `docs/db/schema.sql`, `docs/db/data.sql`을 사용해 개발용 데이터를 준비할 수 있습니다.
-
-### 3. Backend
-
-```bash
 ./gradlew bootRun
 ```
 
-기본 주소는 `http://localhost:8080`입니다.
+기본 API 주소: `http://localhost:8080`
 
-### 4. Frontend
+### 프론트엔드
+
+별도 터미널에서 저장소의 `frontend` 디렉터리로 이동합니다.
 
 ```bash
 cd frontend
 cp .env.example .env
-npm install
+npm ci
 npm run dev
 ```
 
+터미널에 표시되는 주소로 접속합니다. API 연결 주소는 `.env.example`과 Vite 설정을 참고합니다.
+
+</details>
+
 ## 테스트
 
-```bash
-./gradlew test
-cd frontend
-npm run lint
-npm run build
-```
+| 구분 | 실행 위치 | 명령 |
+| --- | --- | --- |
+| 백엔드 테스트 | 저장소 루트 | `./gradlew test` |
+| 프론트엔드 정적 검사 | `frontend` | `npm run lint` |
+| 프론트엔드 빌드 | `frontend` | `npm run build` |
 
-백엔드 테스트는 H2와 테스트 전용 JWT 설정을 사용하므로 로컬 MySQL 없이 실행할 수 있습니다.
+백엔드 테스트는 H2와 테스트 전용 설정을 사용합니다. 인증·회원, 프로그램, 예약·출석, 게시글·댓글, 리뷰 처리 규칙을 테스트합니다.
 
-서비스 테스트는 다음 핵심 규칙을 검증합니다.
+## 개선 방향
 
-- 회원가입·로그인·토큰 재발급과 관리자 역할 변경
-- 프로그램 생성·수정과 담당 트레이너 관리
-- 예약 생성·취소·승인·거절 및 출석 상태 변경
-- 게시글·댓글과 리뷰·답변·신고 처리
+- Controller 계층 및 통합 테스트 확대
+- API 명세와 주요 업무 화면 문서화
+- 운영 환경별 설정과 배포 자동화
+- Docker Compose 기반 로컬 실행 환경
+- Refresh Token 저장 정책과 브라우저 토큰 보관 방식 보강
 
-## 협업 방식
+## 관련 문서
 
-- 기능별 브랜치에서 작업하고 PR을 통해 `main`에 병합했습니다.
-- 충돌이 잦은 라우팅·레이아웃·공통 API 파일의 담당 범위를 구분했습니다.
-- 각 담당자는 자신의 도메인 화면과 API 모듈을 함께 관리했습니다.
-- 상세한 프론트엔드 작업 규칙은 [`frontend/TEAM_WORK.md`](frontend/TEAM_WORK.md)와 [`frontend/TEAM_WORKFLOW.md`](frontend/TEAM_WORKFLOW.md)에 기록했습니다.
-
-```text
-feature/<domain>
-      │
-      ├─ 구현 및 테스트
-      ├─ GitHub Pull Request
-      └─ 리뷰·충돌 해결 후 main 병합
-```
-
-## 한계와 개선 방향
-
-- 운영 환경별 설정 프로파일과 배포 자동화 추가
-- Refresh Token 저장 정책 및 브라우저 토큰 보관 방식 강화
-- 통합 테스트와 Controller 계층 테스트 확장
-- Docker Compose 기반 MySQL 포함 실행 환경 제공
-- API 명세와 화면 캡처 보강
-
-## 보안 주의사항
-
-- `.env`, DB 비밀번호, JWT secret은 Git에 올리지 않습니다.
-- 공개된 적이 있는 비밀값은 재사용하지 않고 반드시 교체합니다.
-- 이 저장소의 SQL 데이터는 예시 계정만 사용합니다.
+| 문서 | 내용 |
+| --- | --- |
+| [프론트엔드 담당 범위](https://github.com/superparkgit/minipro_06/blob/main/frontend/TEAM_WORK.md) | 도메인별 작업 영역 |
+| [프론트엔드 협업 규칙](https://github.com/superparkgit/minipro_06/blob/main/frontend/TEAM_WORKFLOW.md) | 작업·통합 절차 |
+| [DB 스키마](https://github.com/superparkgit/minipro_06/blob/main/docs/db/schema.sql) | 테이블 정의 |

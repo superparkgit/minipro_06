@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+<title id="title">Fitness Reserve</title><desc id="desc">프로그램 탐색부터 예약, 출석, 리뷰까지 연결하는 피트니스 예약 서비스</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0d1f3d"/><stop offset="1" stop-color="#12499c"/></linearGradient><pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse"><path d="M44 0H0V44" fill="none" stroke="#ffffff" stroke-opacity=".04"/></pattern></defs>
+<rect width="1200" height="360" rx="24" fill="url(#bg)"/><rect width="1200" height="360" rx="24" fill="url(#grid)"/>
+<circle cx="1090" cy="100" r="180" fill="#3a8cff" opacity=".12"/><circle cx="1080" cy="95" r="116" fill="none" stroke="#a6caff" stroke-opacity=".17"/>
+<g font-family="-apple-system,BlinkMacSystemFont,Arial,'Apple SD Gothic Neo',sans-serif">
+<rect x="54" y="43" width="224" height="30" rx="15" fill="#fff" fill-opacity=".08" stroke="#fff" stroke-opacity=".15"/>
+<text x="72" y="63" font-size="12" letter-spacing="2.1" fill="#b9d5ff">MOVE. BOOK. CONNECT.</text>
+<text x="54" y="146" font-size="65" letter-spacing="-2.6" font-weight="750" fill="#fff">Fitness Reserve</text>
+<text x="58" y="190" font-size="23" fill="#d6e6ff">운동의 시작부터, 함께한 수업의 기록까지.</text>
+<text x="58" y="226" font-size="16" fill="#a9c1e6">프로그램 탐색 · 예약 · 출석 · 리뷰를 하나의 흐름으로</text>
+<path d="M58 267H1142" stroke="#fff" stroke-opacity=".15"/>
+<text x="58" y="310" font-size="14" fill="#bbcee8">SPRING BOOT + REACT</text>
+<text x="427" y="310" font-size="14" fill="#bbcee8">3인 팀 프로젝트</text>
+<text x="873" y="310" font-size="14" fill="#bbcee8">회원 · 트레이너 · 관리자</text>
+</g>
+<g transform="translate(970 135) rotate(-25)" fill="none" stroke="#d7e8ff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path d="M-43 0H43"/><rect x="-66" y="-33" width="23" height="66" rx="7"/><rect x="43" y="-33" width="23" height="66" rx="7"/><path d="M-80-18V18M80-18V18"/></g></svg>

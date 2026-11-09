@@ -57,8 +57,8 @@
 <th width="50%">수업 상세와 예약 신청</th>
 </tr>
 <tr>
-<td valign="top"><img src="assets/screen-programs.jpg" width="100%" alt="모집 상태별 프로그램 목록"></td>
-<td valign="top"><img src="assets/screen-booking.jpg" width="100%" alt="수업 일정과 트레이너를 확인하는 예약 신청 화면"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-programs.jpg" width="100%" alt="모집 상태별 프로그램 목록"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-booking.jpg" width="100%" alt="수업 일정과 트레이너를 확인하는 예약 신청 화면"></td>
 </tr>
 <tr>
 <td align="center">그룹 수업과 1:1 PT 목록 · 상태별 필터</td>
@@ -76,8 +76,8 @@
 <th width="50%">내 예약</th>
 </tr>
 <tr>
-<td valign="top"><img src="assets/screen-booking-pending.jpg" width="100%" alt="예약 신청 성공 후 승인 대기로 바뀐 화면"></td>
-<td valign="top"><img src="assets/screen-my-reservations.jpg" width="100%" alt="이용 예정·완료·승인 대기 예약을 함께 확인하는 화면"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-booking-pending.jpg" width="100%" alt="예약 신청 성공 후 승인 대기로 바뀐 화면"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-my-reservations.jpg" width="100%" alt="이용 예정·완료·승인 대기 예약을 함께 확인하는 화면"></td>
 </tr>
 <tr>
 <td align="center">신청 성공 안내와 승인 대기 상태</td>
@@ -103,8 +103,8 @@
 <th width="50%">프로그램 운영</th>
 </tr>
 <tr>
-<td valign="top"><img src="assets/screen-trainer-dashboard.jpg" width="100%" alt="담당 프로그램과 예약 인원 현황"></td>
-<td valign="top"><img src="assets/screen-program-manage.jpg" width="100%" alt="수업 완료·폐강·보조 트레이너 배정 화면"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-trainer-dashboard.jpg" width="100%" alt="담당 프로그램과 예약 인원 현황"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-program-manage.jpg" width="100%" alt="수업 완료·폐강·보조 트레이너 배정 화면"></td>
 </tr>
 <tr>
 <td align="center">담당 수업과 예약 인원 확인</td>
@@ -122,8 +122,8 @@
 <th width="50%">완료 수업의 출석 관리</th>
 </tr>
 <tr>
-<td valign="top"><img src="assets/screen-trainer-approval.jpg" width="100%" alt="대기 중인 회원 예약을 승인·거절하는 화면"></td>
-<td valign="top"><img src="assets/screen-attendance.jpg" width="100%" alt="승인된 회원의 출석 또는 결석 처리 화면"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-trainer-approval.jpg" width="100%" alt="대기 중인 회원 예약을 승인·거절하는 화면"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-attendance.jpg" width="100%" alt="승인된 회원의 출석 또는 결석 처리 화면"></td>
 </tr>
 <tr>
 <td align="center">신청자와 예약 상태를 확인해 처리</td>
@@ -143,7 +143,7 @@
 <details>
 <summary><b>프로그램 등록 화면</b></summary>
 
-<img src="assets/screen-program-create.jpg" width="100%" alt="수업 유형·정원·일정을 입력하는 프로그램 등록 화면">
+<img src="assets/missing-photos-11/screen-program-create.jpg" width="100%" alt="수업 유형·정원·일정을 입력하는 프로그램 등록 화면">
 
 프로그램명, 그룹 수업·1:1 PT 유형, 설명, 정원, 시작·종료 일정을 입력합니다.
 
@@ -163,8 +163,8 @@
 <th width="50%">회원 커뮤니티</th>
 </tr>
 <tr>
-<td valign="top"><img src="assets/screen-reviews.jpg" width="100%" alt="참여 후 작성한 리뷰와 프로그램·트레이너 평점"></td>
-<td valign="top"><img src="assets/screen-community.jpg" width="100%" alt="질문·공지 필터와 검색·정렬이 있는 게시판"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-reviews.jpg" width="100%" alt="참여 후 작성한 리뷰와 프로그램·트레이너 평점"></td>
+<td valign="top"><img src="assets/missing-photos-11/screen-community.jpg" width="100%" alt="질문·공지 필터와 검색·정렬이 있는 게시판"></td>
 </tr>
 <tr>
 <td align="center">참여 후기·평점·트레이너 답변</td>
@@ -502,4 +502,5 @@ README 화면 캡처는 별도의 H2 메모리 DB와 예시 데이터를 사용�
 | [프론트엔드 담당 범위](https://github.com/superparkgit/minipro_06/blob/main/frontend/TEAM_WORK.md) | 도메인별 작업 영역 |
 | [프론트엔드 협업 규칙](https://github.com/superparkgit/minipro_06/blob/main/frontend/TEAM_WORKFLOW.md) | 작업·통합 절차 |
 | [DB 스키마](https://github.com/superparkgit/minipro_06/blob/main/docs/db/schema.sql) | 전체 테이블 정의 |
+
 
